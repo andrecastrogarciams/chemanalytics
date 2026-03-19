@@ -625,6 +625,27 @@ textarea:focus {
   box-shadow: inset 4px 0 0 #0f45b3;
 }
 
+.formula-list--single-column {
+  width: 100%;
+}
+
+.formula-row {
+  display: grid;
+  gap: 10px;
+}
+
+.formula-expand {
+  margin: -2px 8px 8px;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(15, 69, 179, 0.06), rgba(255, 255, 255, 0.94));
+  border: 1px solid rgba(15, 69, 179, 0.12);
+}
+
+.formula-inline-hero {
+  margin-bottom: 16px;
+}
+
 .history-button,
 .formula-button {
   width: 100%;

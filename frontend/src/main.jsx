@@ -587,7 +587,7 @@ function App() {
   const liveLotRows = runDetailState.data?.lots?.map((lot) => ({
     id: lot.id,
     label: lot.nf1,
-    formula: `${lot.codpro} / ${lot.codder}`,
+    formula: formatArticleDerivation(lot.codpro, lot.codder),
     date: formatDateTime(lot.recurtimento_date),
     operator: runDetailState.data.executed_by_username || "Sistema",
     status: lot.status_final,
@@ -773,7 +773,7 @@ function DashboardView({ lotRows }) {
             <thead>
               <tr>
                 <th>Lote</th>
-                <th>Formula</th>
+                <th>Artigo / Derivacao</th>
                 <th>Data/Hora</th>
                 <th>Operador</th>
                 <th>Status</th>
@@ -844,12 +844,12 @@ function ReconciliationView({
               <input name="nf1" placeholder="LT-2024-001" type="text" value={form.nf1} onChange={onChange} />
             </label>
             <label>
-              <span>CODPRO</span>
-              <input name="codpro" placeholder="Produto" type="text" value={form.codpro} onChange={onChange} />
+              <span>Artigo</span>
+              <input name="codpro" placeholder="Codigo do artigo" type="text" value={form.codpro} onChange={onChange} />
             </label>
             <label>
-              <span>CODDER</span>
-              <input name="codder" placeholder="Derivacao" type="text" value={form.codder} onChange={onChange} />
+              <span>Derivacao</span>
+              <input name="codder" placeholder="Codigo da derivacao" type="text" value={form.codder} onChange={onChange} />
             </label>
             <label>
               <span>Produto quimico</span>
@@ -918,7 +918,7 @@ function ReconciliationView({
                 {lots.map((lot) => (
                   <tr key={lot.id}>
                     <td>{lot.nf1}</td>
-                    <td>{lot.codpro} / {lot.codder}</td>
+                    <td>{formatArticleDerivation(lot.codpro, lot.codder)}</td>
                     <td>{formatDateTime(lot.recurtimento_date)}</td>
                     <td><span className={`pill status-${normalizeStatus(lot.status_final)}`}>{formatStatusLabel(lot.status_final)}</span></td>
                     <td><button className="table-link" type="button" onClick={() => onLoadLot(lot.id)}>Ver itens</button></td>
@@ -1113,7 +1113,7 @@ function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, run
               {selectedRunLots.map((lot) => (
                 <tr key={lot.id}>
                   <td>{lot.nf1}</td>
-                  <td>{lot.codpro} / {lot.codder}</td>
+                  <td>{formatArticleDerivation(lot.codpro, lot.codder)}</td>
                   <td><span className={`pill status-${normalizeStatus(lot.status_final)}`}>{formatStatusLabel(lot.status_final)}</span></td>
                   <td>{lot.items_count}</td>
                   <td><button className="table-link" type="button" onClick={() => onLoadLot(lot.id)}>Abrir lote</button></td>
@@ -1153,12 +1153,10 @@ function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, run
 
 function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedFormula }) {
   const formulas = formulasState.data || [];
-  const currentVersion = selectedFormula?.current_version;
-  const visibleItems = currentVersion?.items || [];
 
   return (
-    <section className="page-grid formulas-layout">
-      <article className="panel-card formula-list">
+    <section className="page-grid">
+      <article className="panel-card formula-list formula-list--single-column">
         <div className="panel-head">
           <h4>Formulas existentes</h4>
           <span>artigos ativos e historico</span>
@@ -1167,70 +1165,63 @@ function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedF
         {formulasState.error ? <p className="form-error">{formulasState.error}</p> : null}
         <div className="formula-listing">
           {formulas.map((formula) => (
-            <button
-              key={formula.id}
-              className={selectedFormula?.id === formula.id ? "formula-item active formula-button" : "formula-item formula-button"}
-              type="button"
-              onClick={() => onSelectFormula(formula.id)}
-            >
-              <small>{formula.codpro} / {formula.codder}</small>
-              <strong>{formula.observation || "Formula sem observacao"}</strong>
-              <span className={`pill ${formula.active ? "status-success" : "status-neutral"}`}>
-                {formula.current_version ? `Ativa V${formula.current_version.version_number}` : "Sem versao"}
-              </span>
-            </button>
+            <div key={formula.id} className={selectedFormula?.id === formula.id ? "formula-row expanded" : "formula-row"}>
+              <button
+                className={selectedFormula?.id === formula.id ? "formula-item active formula-button" : "formula-item formula-button"}
+                type="button"
+                onClick={() => onSelectFormula(formula.id)}
+              >
+                <small>{formatArticleDerivation(formula.codpro, formula.codder)}</small>
+                <strong>{formula.observation || "Formula sem observacao"}</strong>
+                <span className={`pill ${formula.active ? "status-success" : "status-neutral"}`}>
+                  {formula.current_version ? `Ativa V${formula.current_version.version_number}` : "Sem versao"}
+                </span>
+              </button>
+
+              {selectedFormula?.id === formula.id ? (
+                <div className="formula-expand">
+                  <div className="detail-hero formula-inline-hero">
+                    <div>
+                      <strong>{formula.observation || "Formula sem observacao adicional"}</strong>
+                      <p>
+                        {formula.current_version
+                          ? `Versao ${formula.current_version.version_number} vigente desde ${formatDateTime(formula.current_version.start_date)}`
+                          : "Sem versao ativa carregada"}
+                      </p>
+                    </div>
+                    <span className="pill status-success">{formula.active ? "Producao ativa" : "Inativa"}</span>
+                  </div>
+
+                  <div className="table-shell">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Codigo</th>
+                          <th>Descricao</th>
+                          <th>Percentual</th>
+                          <th>Tolerancia</th>
+                          <th>Tipo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(formula.current_version?.items || []).map((row) => (
+                          <tr key={row.id}>
+                            <td>{row.chemical_code}</td>
+                            <td>{row.chemical_description}</td>
+                            <td>{row.percentual == null ? "Incompleto" : `${formatNumber(row.percentual)}%`}</td>
+                            <td>{formatNumber(row.tolerance_pct)}%</td>
+                            <td><span className="pill status-neutral">{row.is_incomplete ? "Pendente" : "Componente"}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
-      </article>
-
-      <article className="panel-card formula-detail">
-        <div className="panel-head">
-          <h4>{selectedFormula ? `${selectedFormula.codpro} / ${selectedFormula.codder}` : "Selecione uma formula"}</h4>
-          <button className="secondary-button" type="button">Criar nova versao</button>
-        </div>
-
-        {selectedFormula ? (
-          <>
-            <div className="detail-hero">
-              <div>
-                <strong>{selectedFormula.observation || "Formula sem observacao adicional"}</strong>
-                <p>
-                  {currentVersion
-                    ? `Versao ${currentVersion.version_number} vigente desde ${formatDateTime(currentVersion.start_date)}`
-                    : "Sem versao ativa carregada"}
-                </p>
-              </div>
-              <span className="pill status-success">{selectedFormula.active ? "Producao ativa" : "Inativa"}</span>
-            </div>
-
-            <div className="table-shell">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Codigo</th>
-                    <th>Descricao</th>
-                    <th>Percentual</th>
-                    <th>Tolerancia</th>
-                    <th>Tipo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleItems.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.chemical_code}</td>
-                      <td>{row.chemical_description}</td>
-                      <td>{row.percentual == null ? "Incompleto" : `${formatNumber(row.percentual)}%`}</td>
-                      <td>{formatNumber(row.tolerance_pct)}%</td>
-                      <td><span className="pill status-neutral">{row.is_incomplete ? "Pendente" : "Componente"}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : (
-          <p className="inline-message">Nenhuma formula carregada ou acesso nao permitido para o perfil atual.</p>
-        )}
+        {!formulas.length ? <p className="inline-message">Nenhuma formula carregada ou acesso nao permitido para o perfil atual.</p> : null}
       </article>
     </section>
   );
@@ -1247,6 +1238,10 @@ function humanizeInconsistencyCode(code) {
   };
 
   return dictionary[code] || formatStatusLabel(code);
+}
+
+function formatArticleDerivation(article, derivation) {
+  return `ARTIGO ${article} / DERIVACAO ${derivation}`;
 }
 
 function formatDateTime(value) {
