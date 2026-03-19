@@ -73,10 +73,10 @@ class OracleReconciliationAdapter:
         rows = self._fetch_rows(query, params)
         return [
             {
-                "nf1": row["NF1"],
+                "nf1": str(row["NF1"]),
                 "data": self._parse_date(row["DATA"]),
-                "codpro": row["CODPRO"],
-                "codder": row["CODDER"],
+                "codpro": str(row["CODPRO"]),
+                "codder": str(row["CODDER"]),
                 "desder": row.get("DESDER"),
                 "peso": row["PESO"],
             }
@@ -105,8 +105,8 @@ class OracleReconciliationAdapter:
         rows = self._fetch_rows(query, params)
         return [
             {
-                "nf1": row["NF1"],
-                "codpro": row["CODPRO"],
+                "nf1": str(row["NF1"]),
+                "codpro": str(row["CODPRO"]),
                 "despro": row["DESPRO"],
                 "qtduti": row["QTDUTI"],
             }

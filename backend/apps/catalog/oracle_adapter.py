@@ -12,7 +12,7 @@ class OracleCatalogAdapter:
     ARTICLES_QUERY = """
     SELECT
       COD_ARTIGO,
-      COD_DERIVACAO,
+      COD_DERIVCAO AS COD_DERIVACAO,
       ARTIGO,
       DERIVACAO
     FROM USU_VBI_ARTIGOS_SEMI_NOA
