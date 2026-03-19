@@ -33,11 +33,14 @@ def check_mysql_dependency():
 
 
 def check_oracle_dependency():
-    configured = bool(os.getenv("ORACLE_DSN"))
+    configured = bool(
+        os.getenv("ORACLE_DSN")
+        or (os.getenv("ORACLE_HOST") and os.getenv("ORACLE_SERVICE_NAME") and os.getenv("ORACLE_USER"))
+    )
     package_available = importlib.util.find_spec("oracledb") is not None
 
     if not configured:
-        return {"status": "not_configured", "details": "ORACLE_DSN ausente"}
+        return {"status": "not_configured", "details": "Oracle nao configurado por DSN nem por host/service_name"}
     if not package_available:
         return {"status": "unavailable", "details": "Pacote oracledb nao instalado neste bootstrap"}
     return {"status": "configured", "details": "Driver Oracle disponivel para integracao futura"}

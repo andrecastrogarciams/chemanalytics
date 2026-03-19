@@ -31,6 +31,9 @@ Copie `.env.example` para `.env` e ajuste no mínimo:
 - `VITE_API_BASE_URL`
 - `ORACLE_USER`
 - `ORACLE_PASSWORD`
+- `ORACLE_HOST`
+- `ORACLE_PORT`
+- `ORACLE_SERVICE_NAME`
 - `ORACLE_DSN`
 - `MYSQL_DATABASE`
 - `MYSQL_USER`
@@ -42,6 +45,7 @@ Observações:
 
 - O backend atual usa SQLite em `backend/config/settings.py`.
 - As variáveis MySQL e Oracle já existem para preparação operacional, health check e futuras integrações.
+- Oracle pode ser configurado por `ORACLE_DSN` ou por `ORACLE_HOST` + `ORACLE_PORT` + `ORACLE_SERVICE_NAME`.
 - Para testes offline, os adapters aceitam fixtures locais por variável:
   - `ORACLE_FIXTURE_PATH`
   - `ORACLE_RECONCILIATION_FIXTURE_PATH`
