@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 from django.utils.timezone import now
+from django.utils.timezone import is_naive, make_aware
 
 
 class OracleSyncError(Exception):
@@ -67,7 +68,7 @@ class OracleCatalogAdapter:
                 "product_type_description": row["DESCRICAO_TIPO"],
                 "source_status": row["STATUS"],
                 "active": self._infer_active(row["STATUS"]),
-                "source_last_seen_at": row["DATA_CONSULTA"] or now(),
+                "source_last_seen_at": self._normalize_datetime(row["DATA_CONSULTA"]),
             }
             for row in rows
         ]
@@ -129,3 +130,11 @@ class OracleCatalogAdapter:
     def _infer_active(status):
         normalized = str(status or "").strip().upper()
         return normalized not in {"I", "INAT", "INATIVO", "N"}
+
+    @staticmethod
+    def _normalize_datetime(value):
+        if not value:
+            return now()
+        if is_naive(value):
+            return make_aware(value)
+        return value
