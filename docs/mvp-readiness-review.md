@@ -34,49 +34,74 @@ Este review cobre o fluxo principal ja implementado:
 
 ### 1. Preparacao do ambiente
 
-- [ ] Copiar `.env.example` para `.env`
-- [ ] Preencher `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `FRONTEND_URL`
-- [ ] Subir backend conforme [install-deploy.md](C:/Users/ANDREGARCIA/ChemAnalytics_v3/docs/install-deploy.md)
-- [ ] Subir frontend conforme [install-deploy.md](C:/Users/ANDREGARCIA/ChemAnalytics_v3/docs/install-deploy.md)
+- [x] Copiar `.env.example` para `.env`
+- [x] Preencher `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `FRONTEND_URL`
+- [x] Subir backend conforme [install-deploy.md](C:/Users/ANDREGARCIA/ChemAnalytics_v3/docs/install-deploy.md)
+- [x] Subir frontend conforme [install-deploy.md](C:/Users/ANDREGARCIA/ChemAnalytics_v3/docs/install-deploy.md)
 - Evidencia:
+  - Deploy isolado validado em Ubuntu com `systemd`, Nginx e hostname interno `chemanalytics.viposa.local`
+  - Frontend publicado com `VITE_API_BASE_URL=/api`
 
 ### 2. Health e status operacional
 
-- [ ] `GET /api/v1/health/live` retorna `ok`
-- [ ] `GET /api/v1/health/dependencies` responde para perfil `admin`
-- [ ] `python backend\manage.py system_status --format=json` executa sem erro
+- [x] `GET /api/v1/health/live` retorna `ok`
+- [x] `GET /api/v1/health/dependencies` responde para perfil `admin`
+- [x] `python backend\manage.py system_status --format=json` executa sem erro
 - Evidencia:
+  - `health/live` validado no servidor e via hostname interno
+  - `system_status` em 2026-03-19 retornou `dependencies.status = ok`
 
 ### 3. Autenticacao e perfis
 
-- [ ] Usuario ativo autentica com sucesso
+- [x] Usuario ativo autentica com sucesso
 - [ ] Usuario inativo recebe `USER_INACTIVE`
 - [ ] Perfil `consulta` nao acessa endpoint restrito de `reviewer`
 - [ ] Troca de senha limpa `must_change_password`
 - Evidencia:
+  - Login JWT validado com usuario `andre` no ambiente Ubuntu
+  - UI saiu de `Visual demo` apos autenticacao real
 
 ### 4. Formulas e governanca
 
-- [ ] Bootstrap de formulas roda com `imports\PREVISAO_CONSUMO_PQ.xlsx`
-- [ ] Formula e versao inicial ficam persistidas
+- [x] Bootstrap de formulas roda com `imports\PREVISAO_CONSUMO_PQ.xlsx`
+- [x] Formula e versao inicial ficam persistidas
 - [ ] Nova versao de formula pode ser criada
 - [ ] Versao usada em reconciliacao nao pode ser editada
 - Evidencia:
+  - Bootstrap inicial executado em 2026-03-19 com resultado:
+    - `formulas_created = 13`
+    - `versions_created = 14`
+    - `items_created = 352`
+    - `incomplete_items_created = 10`
+    - `rejected_rows = []`
 
 ### 5. Sincronizacao de catalogos
 
-- [ ] `python backend\manage.py sync_catalogs --format=json` executa
+- [x] `python backend\manage.py sync_catalogs --format=json` executa
 - [ ] `GET /api/v1/sync/runs` lista a ultima sincronizacao
-- [ ] `health/dependencies` reflete `last_sync`
+- [x] `health/dependencies` reflete `last_sync`
 - Evidencia:
+  - Sincronizacao Oracle real validada em 2026-03-19
+  - Resultado da ultima execucao:
+    - `articles = 26`
+    - `chemicals = 1803`
+    - `status = success`
 
 ### 6. Conferencia operacional
 
-- [ ] `POST /api/v1/reconciliation/runs` executa com janela valida
-- [ ] A conferencia persiste `run`, `lotes` e `itens`
+- [x] `POST /api/v1/reconciliation/runs` executa com janela valida
+- [x] A conferencia persiste `run`, `lotes` e `itens`
 - [ ] Pelo menos um caso divergente e um inconsistente ficam identificaveis
-- [ ] O detalhe mostra codigos de inconsistencia compreensiveis
+- [x] O detalhe mostra codigos de inconsistencia compreensiveis
 - Evidencia:
+  - Runs reais executadas com sucesso no ambiente Oracle
+  - Exemplo validado:
+    - `run.id = 5`
+    - `processed_lots = 8`
+    - `processed_items = 200`
+    - `execution_time_ms = 9205`
+  - No primeiro ciclo, o detalhe do lote mostrou `formula_not_found`, o que levou ao bootstrap inicial das formulas
+  - Apos a carga inicial, a UI passou a retornar validacoes reais no navegador
 
 ### 7. Revisao manual
 
@@ -89,11 +114,13 @@ Este review cobre o fluxo principal ja implementado:
 
 ### 8. Historico e navegacao
 
-- [ ] `GET /api/v1/reconciliation/runs` lista execucoes historicas
-- [ ] `GET /api/v1/reconciliation/runs/{run_id}` mostra resumo por lote
-- [ ] `GET /api/v1/reconciliation/lots/{lot_id}` mostra detalhe por item
+- [x] `GET /api/v1/reconciliation/runs` lista execucoes historicas
+- [x] `GET /api/v1/reconciliation/runs/{run_id}` mostra resumo por lote
+- [x] `GET /api/v1/reconciliation/lots/{lot_id}` mostra detalhe por item
 - [ ] Perfil `consulta` consegue navegar pelo historico
 - Evidencia:
+  - Historico e detalhe validados via API no ambiente Ubuntu com dados reais
+  - A UI navegou os resultados da reconciliação no navegador
 
 ### 9. Gestao de usuarios
 
@@ -135,18 +162,25 @@ Marcar `NO-GO` se:
 
 ## Riscos remanescentes conhecidos
 
-- Deploy homologado apenas em modo local com SQLite
-- Integracao Oracle real ainda depende de ambiente externo
+- Deploy homologado em Ubuntu isolado com SQLite local e frontend publicado via Nginx
+- Integracao Oracle real validada para sincronizacao de catalogos e consulta de reconciliacao
 - MySQL, Gunicorn e cron ainda nao foram fechados como esteira operacional
 - Nao existe pipeline formal de release/rollback automatizado
 
 ## Resultado do review
 
-- Data:
-- Responsavel:
-- Status final: `GO` / `NO-GO`
+- Data: 2026-03-19
+- Responsavel: Codex + validacao operacional em servidor Ubuntu
+- Status final: `GO` parcial para fluxo tecnico principal / `PENDENTE` para aceite funcional completo
 - Observacoes:
+  - Deploy isolado validado em Ubuntu
+  - Oracle real validado para conexao, catalogos e execucao de conferencia
+  - Bootstrap inicial de formulas executado uma unica vez com a planilha `imports/PREVISAO_CONSUMO_PQ.xlsx`
+  - Ainda faltam evidencias formais de revisao manual ponta a ponta e navegacao por perfil `consulta`
 - Acoes pos-review:
+  - Validar revisao manual com item real divergente
+  - Validar navegacao somente leitura com perfil `consulta`
+  - Registrar aceite funcional com usuario interno
 
 ## Pre-check tecnico executado em 2026-03-18
 

@@ -53,6 +53,14 @@ python backend/manage.py collectstatic --noinput
 python backend/manage.py check
 ```
 
+Para testes manuais no shell, carregue antes o `.env`:
+
+```bash
+set -a
+source /opt/chemanalytics/.env
+set +a
+```
+
 ### Frontend
 
 ```bash

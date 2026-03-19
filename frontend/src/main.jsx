@@ -712,6 +712,10 @@ function ReconciliationView({
 }) {
   const lots = runDetailState.data?.lots || [];
   const items = lotDetailState.data?.items || [];
+  const reviewableItems = items.filter((item) => item.status_final !== "inconsistent");
+  const inconsistentItems = items.filter((item) => item.status_final === "inconsistent");
+  const divergentItems = items.filter((item) => item.status_final === "divergent");
+  const conformItems = items.filter((item) => item.status_final === "conform");
 
   return (
     <section className="page-grid">
@@ -833,33 +837,70 @@ function ReconciliationView({
         {items.length === 0 ? (
           <p className="inline-message">Selecione um lote para ver previsto, realizado e trilha de revisao.</p>
         ) : (
-          <div className="table-shell">
-            <table>
-              <thead>
-                <tr>
-                  <th>Produto quimico</th>
-                  <th>Previsto</th>
-                  <th>Realizado</th>
-                  <th>Desvio</th>
-                  <th>Status final</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.chemical_description}</strong>
-                      <div className="muted-inline">COD {item.chemical_code}</div>
-                    </td>
-                    <td>{formatNumber(item.predicted_qty)} kg</td>
-                    <td>{formatNumber(item.used_qty)} kg</td>
-                    <td>{formatPercent(item.deviation_pct)}</td>
-                    <td><span className={`pill status-${normalizeStatus(item.status_final)}`}>{formatStatusLabel(item.status_final)}</span></td>
+          <>
+            <div className="lot-summary-grid">
+              <article className="summary-card">
+                <span className="summary-label">Conformes</span>
+                <strong>{conformItems.length}</strong>
+              </article>
+              <article className="summary-card">
+                <span className="summary-label">Divergentes</span>
+                <strong>{divergentItems.length}</strong>
+              </article>
+              <article className="summary-card is-danger">
+                <span className="summary-label">Inconsistentes</span>
+                <strong>{inconsistentItems.length}</strong>
+              </article>
+            </div>
+
+            {inconsistentItems.length ? (
+              <div className="inconsistency-banner">
+                <strong>Atencao operacional</strong>
+                <span>
+                  Existem {inconsistentItems.length} itens inconsistentes neste lote. Os motivos aparecem abaixo para orientar o saneamento de formula, catalogo ou dados Oracle.
+                </span>
+              </div>
+            ) : null}
+
+            <div className="table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Produto quimico</th>
+                    <th>Previsto</th>
+                    <th>Realizado</th>
+                    <th>Desvio</th>
+                    <th>Status final</th>
+                    <th>Diagnostico</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.id} className={item.status_final === "inconsistent" ? "row-inconsistent" : ""}>
+                      <td>
+                        <strong>{item.chemical_description}</strong>
+                        <div className="muted-inline">COD {item.chemical_code}</div>
+                      </td>
+                      <td>{formatNumber(item.predicted_qty)} kg</td>
+                      <td>{formatNumber(item.used_qty)} kg</td>
+                      <td>{formatPercent(item.deviation_pct)}</td>
+                      <td><span className={`pill status-${normalizeStatus(item.status_final)}`}>{formatStatusLabel(item.status_final)}</span></td>
+                      <td>
+                        {item.inconsistency_code ? (
+                          <div className="diagnostic-block">
+                            <strong>{humanizeInconsistencyCode(item.inconsistency_code)}</strong>
+                            <span>{item.inconsistency_message || "Sem detalhe adicional."}</span>
+                          </div>
+                        ) : (
+                          <span className="muted-inline">Dentro do fluxo esperado</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </article>
 
@@ -869,13 +910,18 @@ function ReconciliationView({
           <span>justificativa obrigatoria</span>
         </div>
         {!canUseLiveData ? <p className="inline-message">A revisao manual exige login com perfil reviewer ou admin.</p> : null}
+        {reviewableItems.length === 0 && items.length > 0 ? (
+          <p className="inline-message">
+            Nenhum item elegivel para override manual. Itens inconsistentes exigem correcao de formula, catalogo ou origem Oracle antes de revisao.
+          </p>
+        ) : null}
         <form onSubmit={onReviewSubmit}>
           <div className="review-grid">
             <label>
               <span>Item divergente</span>
-              <select disabled={!items.length || !canUseLiveData} name="itemId" value={reviewForm.itemId} onChange={onReviewChange}>
+              <select disabled={!reviewableItems.length || !canUseLiveData} name="itemId" value={reviewForm.itemId} onChange={onReviewChange}>
                 <option value="">Selecione</option>
-                {items.map((item) => (
+                {reviewableItems.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.chemical_description} | {formatStatusLabel(item.status_final)}
                   </option>
@@ -1086,6 +1132,19 @@ function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedF
       </article>
     </section>
   );
+}
+
+function humanizeInconsistencyCode(code) {
+  const dictionary = {
+    formula_not_found: "Formula nao encontrada",
+    chemical_not_in_formula: "Quimico nao cadastrado na formula",
+    formula_item_incomplete: "Item de formula incompleto",
+    formula_item_without_usage: "Formula sem consumo Oracle",
+    predicted_zero: "Previsto igual a zero",
+    inactive_or_stale_catalog_code: "Quimico fora do catalogo ativo",
+  };
+
+  return dictionary[code] || formatStatusLabel(code);
 }
 
 function formatDateTime(value) {

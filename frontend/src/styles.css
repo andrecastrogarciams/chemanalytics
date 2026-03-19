@@ -655,6 +655,51 @@ textarea:focus {
   margin-bottom: 6px;
 }
 
+.lot-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: #f8fbff;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.summary-card strong {
+  display: block;
+  font-size: 1.8rem;
+  letter-spacing: -0.04em;
+}
+
+.summary-card.is-danger {
+  background: rgba(223, 75, 99, 0.08);
+  border-color: rgba(223, 75, 99, 0.18);
+}
+
+.summary-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.inconsistency-banner {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(223, 75, 99, 0.1);
+  border: 1px solid rgba(223, 75, 99, 0.16);
+}
+
 .table-shell {
   overflow-x: auto;
 }
@@ -682,6 +727,27 @@ th {
 td strong {
   display: block;
   margin-bottom: 4px;
+}
+
+.row-inconsistent {
+  background: rgba(223, 75, 99, 0.03);
+}
+
+.diagnostic-block {
+  display: grid;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.diagnostic-block strong {
+  margin: 0;
+  color: #9f1239;
+  font-size: 0.82rem;
+}
+
+.diagnostic-block span {
+  color: #64748b;
+  font-size: 0.82rem;
 }
 
 .pill {
@@ -786,7 +852,8 @@ td strong {
   .formulas-layout,
   .filter-grid,
   .review-grid,
-  .card-grid {
+  .card-grid,
+  .lot-summary-grid {
     grid-template-columns: 1fr;
   }
 
