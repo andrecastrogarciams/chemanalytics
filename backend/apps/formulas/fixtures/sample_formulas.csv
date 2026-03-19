@@ -1,0 +1,4 @@
+codpro,codder,start_date,chemical_code,chemical_description,percentual,tolerance_pct
+ART001,D1,2026-01-01,Q001,Acido,4.7000,2.00
+ART001,D1,2026-01-01,Q002,Corante,1.2000,1.50
+ART002,D2,2026-02-01,Q010,Base,2.5000,0.50

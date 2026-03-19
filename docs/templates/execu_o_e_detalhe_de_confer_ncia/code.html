@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f45b3",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>Execução de Conferência de Lote</title>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 lg:px-40">
+<div class="flex items-center gap-4">
+<div class="h-8 w-auto">
+<img alt="Logo Corporativo" class="h-full" data-alt="Logo da empresa conferência de lote" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyYORZhPjVD1aKFkkAentmYPqMMWYm_i2IH9xxPqaoh2OEs1k765K-bjJBTTwFtG80ZQvtl9t-hudeiVfNXza42OM9cbLnAZ54_pWI-oOuw0vCCXYCvW3NjbzwQWXKv4dE2ZPY8F6n_oGgpXATC5oZXJN9n2y6CJ0PGIxTZ_1VYoMbxrWTY3vi9kllxqaE3WqJ4HGayKC0E3iGxo5jHlLyFxfr789zwz2o4QjCZLSvc7xkJm-0ca0UgMKdcRVAV1JWtm-xC3H54iG2"/>
+</div>
+<div class="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-tight">Gestão ERP</h2>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<button class="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="bg-primary/20 flex items-center justify-center rounded-full size-10 border border-primary/30">
+<span class="material-symbols-outlined text-primary">person</span>
+</div>
+</div>
+</header>
+<main class="flex flex-1 flex-col lg:px-40 py-8 gap-8">
+<section class="flex flex-col gap-2">
+<h1 class="text-3xl font-bold tracking-tight">Execução de Conferência</h1>
+<p class="text-slate-500 dark:text-slate-400">Detalhamento de lotes e validação de pesagem industrial</p>
+</section>
+<section class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-2 mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+<span class="material-symbols-outlined text-primary">filter_alt</span>
+<h3 class="text-lg font-bold">Filtros de Busca</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium">Intervalo de Datas (Máx 90 dias)</label>
+<div class="relative">
+<input class="w-full rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 py-2.5 px-4 focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="01/01/2024 - 31/03/2024" type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-slate-400">calendar_today</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium">Número do Lote (NF1)</label>
+<input class="w-full rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 py-2.5 px-4 focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="Ex: LT-2024-001" type="text"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium">CODPRO / CODDER</label>
+<input class="w-full rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 py-2.5 px-4 focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="Código do Produto/Derivação" type="text"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium">Status do Lote</label>
+<select class="w-full rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 py-2.5 px-4 focus:ring-2 focus:ring-primary outline-none transition-all">
+<option value="">Todos os Status</option>
+<option value="conforme">Conforme</option>
+<option value="divergente">Divergente</option>
+<option value="pendente">Pendente</option>
+</select>
+</div>
+</div>
+<div class="mt-8 flex justify-end">
+<button class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-lg flex items-center gap-2 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">analytics</span>
+                            Executar Conferência
+                        </button>
+</div>
+</section>
+<section class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">list_alt</span>
+<h3 class="text-lg font-bold">Detalhamento do Lote: <span class="text-primary">LT-2024-001</span></h3>
+</div>
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Aguardando Revisão</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-800/50">
+<th class="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Produto Químico</th>
+<th class="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Peso Previsto (kg)</th>
+<th class="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Peso Realizado (kg)</th>
+<th class="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Desvio (%)</th>
+<th class="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<tr>
+<td class="px-6 py-4">
+<div class="font-medium">Polímero de Etileno X-10</div>
+<div class="text-xs text-slate-400">COD: 4002-89</div>
+</td>
+<td class="px-6 py-4 font-mono">250,00</td>
+<td class="px-6 py-4 font-mono">250,05</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">+0,02%</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 text-emerald-600 text-sm font-bold">
+<span class="material-symbols-outlined text-sm">check_circle</span> Conforme
+                                        </span>
+</td>
+</tr>
+<tr>
+<td class="px-6 py-4">
+<div class="font-medium">Aditivo Estabilizante UV</div>
+<div class="text-xs text-slate-400">COD: 1055-22</div>
+</td>
+<td class="px-6 py-4 font-mono">15,00</td>
+<td class="px-6 py-4 font-mono">13,50</td>
+<td class="px-6 py-4 text-rose-600 font-medium">-10,00%</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 text-rose-600 text-sm font-bold">
+<span class="material-symbols-outlined text-sm">error</span> Divergente
+                                        </span>
+</td>
+</tr>
+<tr>
+<td class="px-6 py-4">
+<div class="font-medium">Pigmento Masterbatch Azul</div>
+<div class="text-xs text-slate-400">COD: 9921-04</div>
+</td>
+<td class="px-6 py-4 font-mono">5,00</td>
+<td class="px-6 py-4 font-mono">4,98</td>
+<td class="px-6 py-4 text-emerald-600 font-medium">-0,40%</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1 text-emerald-600 text-sm font-bold">
+<span class="material-symbols-outlined text-sm">check_circle</span> Conforme
+                                        </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="bg-primary/5 dark:bg-primary/10 rounded-xl border border-primary/20 p-6 mb-12">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">edit_note</span>
+<h3 class="text-lg font-bold text-primary">Revisão Manual</h3>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<div class="lg:col-span-4 flex flex-col gap-4">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold">Selecionar Item para Ajuste</label>
+<select class="rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-2.5 px-4 outline-none focus:ring-2 focus:ring-primary">
+<option>Selecione um item divergente...</option>
+<option>Aditivo Estabilizante UV (Divergente)</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold">Novo Status</label>
+<div class="flex gap-4">
+<label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer bg-white dark:bg-slate-800 hover:border-primary transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+<input checked="" class="hidden" name="new_status" type="radio"/>
+<span class="material-symbols-outlined text-emerald-600">check_circle</span>
+<span class="text-sm font-bold">Conforme</span>
+</label>
+<label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer bg-white dark:bg-slate-800 hover:border-rose-500 transition-all has-[:checked]:border-rose-500 has-[:checked]:bg-rose-50">
+<input class="hidden" name="new_status" type="radio"/>
+<span class="material-symbols-outlined text-rose-600">error</span>
+<span class="text-sm font-bold">Divergente</span>
+</label>
+</div>
+</div>
+</div>
+<div class="lg:col-span-8 flex flex-col gap-4">
+<div class="flex flex-col gap-2 flex-1">
+<label class="text-sm font-bold flex items-center gap-1">
+                                    Justificativa <span class="text-rose-500 text-xs font-normal">(Obrigatório)</span>
+</label>
+<textarea class="w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 focus:ring-2 focus:ring-primary outline-none transition-all resize-none" placeholder="Descreva o motivo da alteração manual do status deste item..." rows="4"></textarea>
+</div>
+<div class="flex justify-end">
+<button class="bg-primary/20 hover:bg-primary/30 text-primary font-bold py-2.5 px-6 rounded-lg transition-all">
+                                    Salvar Justificativa
+                                </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<footer class="lg:px-40 py-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-sm text-slate-500">© 2024 Gestão ERP - Todos os direitos reservados.</p>
+<div class="flex gap-6">
+<a class="text-sm text-slate-500 hover:text-primary" href="#">Manual do Operador</a>
+<a class="text-sm text-slate-500 hover:text-primary" href="#">Suporte Técnico</a>
+<a class="text-sm text-slate-500 hover:text-primary" href="#">Log de Auditoria</a>
+</div>
+</div>
+</footer>
+</div>
+</div>
+</body></html>
