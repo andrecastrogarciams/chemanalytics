@@ -45,6 +45,21 @@ function persistSession(session) {
   window.localStorage.setItem(storageKey, JSON.stringify(session));
 }
 
+function readTokenExpiry(token) {
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const [, payload] = token.split(".");
+    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
+    const decoded = JSON.parse(window.atob(normalized));
+    return decoded.exp ? decoded.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
 async function requestJson(path, options = {}, accessToken = null) {
   const headers = {
     "Content-Type": "application/json",
@@ -156,6 +171,26 @@ function App() {
         : null
     );
   }, [authState.access, authState.refresh, authState.user]);
+
+  useEffect(() => {
+    if (!authState.access || !authState.refresh || authState.mode !== "live") {
+      return undefined;
+    }
+
+    const expiry = readTokenExpiry(authState.access);
+    if (!expiry) {
+      return undefined;
+    }
+
+    const refreshInMs = Math.max(expiry - Date.now() - 30000, 1000);
+    const timerId = window.setTimeout(() => {
+      refreshAccessToken().catch(() => {});
+    }, refreshInMs);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [authState.access, authState.refresh, authState.mode]);
 
   useEffect(() => {
     if (!canUseLiveData || (activeSection !== "history" && activeSection !== "reconciliation")) {
@@ -347,7 +382,8 @@ function App() {
   }
 
   async function refreshAccessToken() {
-    if (!authState.refresh) {
+    const session = readStoredSession() || authState;
+    if (!session.refresh) {
       expireSession();
       throw new Error("Sessao expirada.");
     }
@@ -355,7 +391,7 @@ function App() {
     try {
       const payload = await requestJson("/v1/auth/refresh", {
         method: "POST",
-        body: JSON.stringify({ refresh: authState.refresh }),
+        body: JSON.stringify({ refresh: session.refresh }),
       });
       const nextAccess = payload.data.access;
       setAuthState((current) => ({
@@ -371,10 +407,15 @@ function App() {
   }
 
   async function requestWithSession(path, options = {}) {
+    const session = readStoredSession() || authState;
     try {
-      return await requestJson(path, options, authState.access);
+      return await requestJson(path, options, session.access);
     } catch (error) {
-      if (error.status === 401 && authState.refresh) {
+      const shouldRefresh =
+        (error.status === 401 || error.payload?.code === "token_not_valid" || error.payload?.detail === "Given token not valid for any token type") &&
+        session.refresh;
+
+      if (shouldRefresh) {
         const nextAccess = await refreshAccessToken();
         return requestJson(path, options, nextAccess);
       }
