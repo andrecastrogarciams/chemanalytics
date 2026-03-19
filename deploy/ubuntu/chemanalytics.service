@@ -1,0 +1,16 @@
+[Unit]
+Description=ChemAnalytics Gunicorn Service
+After=network.target
+
+[Service]
+Type=simple
+User=chemanalytics
+Group=chemanalytics
+WorkingDirectory=/opt/chemanalytics
+EnvironmentFile=/opt/chemanalytics/.env
+ExecStart=/opt/chemanalytics/.venv/bin/gunicorn config.wsgi:application --chdir /opt/chemanalytics/backend --bind 127.0.0.1:8010 --workers 2 --timeout 120
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
