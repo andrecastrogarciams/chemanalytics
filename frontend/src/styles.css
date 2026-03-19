@@ -676,6 +676,12 @@ textarea:focus {
   margin-bottom: 6px;
 }
 
+.formula-meta-line {
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
 .lot-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

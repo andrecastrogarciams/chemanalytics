@@ -1172,7 +1172,7 @@ function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedF
                 onClick={() => onSelectFormula(formula.id)}
               >
                 <small>{formatArticleDerivation(formula.codpro, formula.codder)}</small>
-                <strong>{formula.observation || "Formula sem observacao"}</strong>
+                <strong>{formatArticleLabels(formula)}</strong>
                 <span className={`pill ${formula.active ? "status-success" : "status-neutral"}`}>
                   {formula.current_version ? `Ativa V${formula.current_version.version_number}` : "Sem versao"}
                 </span>
@@ -1182,7 +1182,8 @@ function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedF
                 <div className="formula-expand">
                   <div className="detail-hero formula-inline-hero">
                     <div>
-                      <strong>{formula.observation || "Formula sem observacao adicional"}</strong>
+                      <strong>{formatArticleLabels(formula)}</strong>
+                      <p className="formula-meta-line">{formatArticleDerivation(formula.codpro, formula.codder)}</p>
                       <p>
                         {formula.current_version
                           ? `Versao ${formula.current_version.version_number} vigente desde ${formatDateTime(formula.current_version.start_date)}`
@@ -1242,6 +1243,12 @@ function humanizeInconsistencyCode(code) {
 
 function formatArticleDerivation(article, derivation) {
   return `ARTIGO ${article} / DERIVACAO ${derivation}`;
+}
+
+function formatArticleLabels(formula) {
+  const article = formula.article_description || "Artigo sem descricao";
+  const derivation = formula.derivation_description || "Derivacao sem descricao";
+  return `${article} / ${derivation}`;
 }
 
 function formatDateTime(value) {
