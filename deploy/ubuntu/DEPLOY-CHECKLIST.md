@@ -29,6 +29,7 @@
 - [ ] rodar `python backend/manage.py check`
 - [ ] rodar `npm ci` no `frontend`
 - [ ] rodar `npm run build` no `frontend`
+- [ ] confirmar que o build usou `frontend/.env.production` com `VITE_API_BASE_URL=/api`
 
 ## Systemd
 

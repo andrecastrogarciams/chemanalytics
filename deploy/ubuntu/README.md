@@ -61,6 +61,11 @@ npm ci
 npm run build
 ```
 
+Observacao:
+
+- o repositório versiona `frontend/.env.production` com `VITE_API_BASE_URL=/api`
+- assim o build de producao aponta para o proxy do Nginx, sem depender de `localhost`
+
 ### Systemd
 
 ```bash

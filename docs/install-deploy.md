@@ -68,6 +68,11 @@ npm run build
 npm run dev
 ```
 
+Observacao:
+
+- o repositório versiona `frontend/.env.production` com `VITE_API_BASE_URL=/api`
+- no deploy publicado via Nginx, o frontend deve falar com a API usando caminho relativo `/api`, nunca `localhost`
+
 ## Criacao do banco MySQL
 
 Topico exigido pela spec, mas ainda nao utilizado pelo `settings.py` atual.
