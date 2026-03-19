@@ -65,7 +65,10 @@ async function requestJson(path, options = {}, accessToken = null) {
       payload.error?.code ||
       payload.code ||
       "Nao foi possivel completar a requisicao.";
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
 
   return payload;
@@ -173,7 +176,7 @@ function App() {
   async function loadRuns(selectFirst = true) {
     setRunsState((current) => ({ ...current, loading: true, error: "" }));
     try {
-      const payload = await requestJson("/v1/reconciliation/runs", {}, authState.access);
+      const payload = await requestWithSession("/v1/reconciliation/runs");
       const runs = payload.data || [];
       setRunsState({ loading: false, error: "", data: runs });
 
@@ -191,7 +194,7 @@ function App() {
   async function loadRunDetail(runId, selectFirstLot = false) {
     setRunDetailState({ loading: true, error: "", data: null });
     try {
-      const payload = await requestJson(`/v1/reconciliation/runs/${runId}`, {}, authState.access);
+      const payload = await requestWithSession(`/v1/reconciliation/runs/${runId}`);
       const run = payload.data;
       setRunDetailState({ loading: false, error: "", data: run });
 
@@ -209,7 +212,7 @@ function App() {
   async function loadLotDetail(lotId) {
     setLotDetailState({ loading: true, error: "", data: null });
     try {
-      const payload = await requestJson(`/v1/reconciliation/lots/${lotId}`, {}, authState.access);
+      const payload = await requestWithSession(`/v1/reconciliation/lots/${lotId}`);
       setLotDetailState({ loading: false, error: "", data: payload.data });
     } catch (error) {
       setLotDetailState({ loading: false, error: error.message, data: null });
@@ -219,7 +222,7 @@ function App() {
   async function loadFormulas() {
     setFormulasState((current) => ({ ...current, loading: true, error: "" }));
     try {
-      const payload = await requestJson("/v1/formulas", {}, authState.access);
+      const payload = await requestWithSession("/v1/formulas");
       const formulas = payload.data || [];
       setFormulasState({ loading: false, error: "", data: formulas });
       setSelectedFormulaId((current) => current || formulas[0]?.id || null);
@@ -322,12 +325,72 @@ function App() {
     });
   }
 
+  function expireSession(message = "Sua sessao expirou. Faca login novamente.") {
+    startTransition(() => {
+      persistSession(null);
+      setAuthState({
+        loading: false,
+        error: message,
+        user: null,
+        access: "",
+        refresh: "",
+        mode: "demo",
+      });
+      setRunsState({ loading: false, error: "", data: [] });
+      setRunDetailState({ loading: false, error: "", data: null });
+      setLotDetailState({ loading: false, error: "", data: null });
+      setFormulasState({ loading: false, error: "", data: [] });
+      setSelectedFormulaId(null);
+      setActionMessage("");
+      setView("login");
+    });
+  }
+
+  async function refreshAccessToken() {
+    if (!authState.refresh) {
+      expireSession();
+      throw new Error("Sessao expirada.");
+    }
+
+    try {
+      const payload = await requestJson("/v1/auth/refresh", {
+        method: "POST",
+        body: JSON.stringify({ refresh: authState.refresh }),
+      });
+      const nextAccess = payload.data.access;
+      setAuthState((current) => ({
+        ...current,
+        access: nextAccess,
+        mode: "live",
+      }));
+      return nextAccess;
+    } catch (_error) {
+      expireSession();
+      throw new Error("Sessao expirada.");
+    }
+  }
+
+  async function requestWithSession(path, options = {}) {
+    try {
+      return await requestJson(path, options, authState.access);
+    } catch (error) {
+      if (error.status === 401 && authState.refresh) {
+        const nextAccess = await refreshAccessToken();
+        return requestJson(path, options, nextAccess);
+      }
+      if (error.status === 401) {
+        expireSession();
+      }
+      throw error;
+    }
+  }
+
   async function handleRunExecution(event) {
     event.preventDefault();
     setActionMessage("");
 
     try {
-      const payload = await requestJson(
+      const payload = await requestWithSession(
         "/v1/reconciliation/runs",
         {
           method: "POST",
@@ -338,8 +401,7 @@ function App() {
             codder: reconciliationForm.codder || null,
             chemical_code: reconciliationForm.chemical_code || null,
           }),
-        },
-        authState.access
+        }
       );
 
       setActionMessage(`Conferencia executada com sucesso. Run #${payload.data.id} criada.`);
@@ -361,7 +423,7 @@ function App() {
     setReviewForm((current) => ({ ...current, loading: true, error: "", success: "" }));
 
     try {
-      await requestJson(
+      await requestWithSession(
         `/v1/reconciliation/items/${reviewForm.itemId}/reviews`,
         {
           method: "POST",
@@ -369,8 +431,7 @@ function App() {
             reviewed_status: reviewForm.reviewed_status,
             justification: reviewForm.justification,
           }),
-        },
-        authState.access
+        }
       );
 
       if (lotDetailState.data?.id) {
