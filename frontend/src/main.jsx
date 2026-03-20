@@ -260,7 +260,7 @@ function App() {
       const payload = await requestWithSession("/v1/formulas");
       const formulas = payload.data || [];
       setFormulasState({ loading: false, error: "", data: formulas });
-      setSelectedFormulaId((current) => current || formulas[0]?.id || null);
+      setSelectedFormulaId((current) => current || null);
     } catch (error) {
       setFormulasState({ loading: false, error: error.message, data: [] });
     }
@@ -683,7 +683,7 @@ function App() {
           <FormulaView
             canUseLiveData={canUseLiveData}
             formulasState={formulasState}
-            onSelectFormula={setSelectedFormulaId}
+            onSelectFormula={(id) => setSelectedFormulaId((current) => (current === id ? null : id))}
             selectedFormula={selectedFormula}
           />
         ) : null}
@@ -1186,8 +1186,8 @@ function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedF
                 type="button"
                 onClick={() => onSelectFormula(formula.id)}
               >
-                <small>{formatArticleDerivation(formula.codpro, formula.codder)}</small>
                 <strong>{formatArticleLabels(formula)}</strong>
+                <small>{formatArticleDerivation(formula.codpro, formula.codder)}</small>
                 <span className={`pill ${formula.active ? "status-success" : "status-neutral"}`}>
                   {formula.current_version ? `Ativa V${formula.current_version.version_number}` : "Sem versao"}
                 </span>
