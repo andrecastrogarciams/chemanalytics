@@ -1,4 +1,4 @@
-import React, { startTransition, useEffect, useState } from "react";
+import React, { startTransition, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 
 import viposaLogo from "./assets/viposa-logo.png";
@@ -1168,6 +1168,19 @@ function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, run
 
 function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedFormula }) {
   const formulas = formulasState.data || [];
+  const formulaRefs = useRef({});
+
+  useEffect(() => {
+    if (selectedFormula?.id && formulaRefs.current[selectedFormula.id]) {
+      // Small delay to ensure the browser has finished expanding/rendering the item
+      setTimeout(() => {
+        formulaRefs.current[selectedFormula.id]?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+  }, [selectedFormula?.id]);
 
   return (
     <section className="page-grid">
@@ -1180,7 +1193,13 @@ function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedF
         {formulasState.error ? <p className="form-error">{formulasState.error}</p> : null}
         <div className="formula-listing">
           {formulas.map((formula) => (
-            <div key={formula.id} className={selectedFormula?.id === formula.id ? "formula-row expanded" : "formula-row"}>
+            <div
+              key={formula.id}
+              ref={(el) => {
+                formulaRefs.current[formula.id] = el;
+              }}
+              className={selectedFormula?.id === formula.id ? "formula-row expanded" : "formula-row"}
+            >
               <button
                 className={selectedFormula?.id === formula.id ? "formula-item active formula-button" : "formula-item formula-button"}
                 type="button"
@@ -1257,13 +1276,13 @@ function humanizeInconsistencyCode(code) {
 }
 
 function formatArticleDerivation(article, derivation) {
-  return `ARTIGO ${article} / DERIVACAO ${derivation}`;
+  return `${article} ${derivation}`;
 }
 
 function formatArticleLabels(formula) {
   const article = formula.article_description || "Artigo sem descricao";
   const derivation = formula.derivation_description || "Derivacao sem descricao";
-  return `${article} / ${derivation}`;
+  return `${article} ${derivation}`;
 }
 
 function formatDateTime(value) {
