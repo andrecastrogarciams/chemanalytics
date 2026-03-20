@@ -117,6 +117,7 @@ function App() {
   const [runDetailState, setRunDetailState] = useState({ loading: false, error: "", data: null });
   const [lotDetailState, setLotDetailState] = useState({ loading: false, error: "", data: null });
   const [formulasState, setFormulasState] = useState({ loading: false, error: "", data: [] });
+  const [chemicalsState, setChemicalsState] = useState({ loading: false, error: "", data: [] });
   const [selectedFormulaId, setSelectedFormulaId] = useState(null);
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const [newVersionData, setNewVersionData] = useState({
@@ -212,7 +213,18 @@ function App() {
     }
 
     loadFormulas();
+    loadChemicals();
   }, [activeSection, canUseLiveData]);
+
+  async function loadChemicals() {
+    setChemicalsState((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const payload = await requestWithSession("/v1/catalog/chemicals");
+      setChemicalsState({ loading: false, error: "", data: payload.data || [] });
+    } catch (error) {
+      setChemicalsState({ loading: false, error: error.message, data: [] });
+    }
+  }
 
   async function loadRuns(selectFirst = true, expandFirstLot = false) {
     setRunsState((current) => ({ ...current, loading: true, error: "" }));
@@ -611,6 +623,7 @@ function App() {
         tolerance_pct: item.tolerance_pct,
         is_incomplete: item.is_incomplete,
         incomplete_reason: item.incomplete_reason,
+        _is_cloned: true,
       })),
     });
     setIsCreatingVersion(true);
@@ -646,6 +659,7 @@ function App() {
           tolerance_pct: 0,
           is_incomplete: false,
           incomplete_reason: "",
+          _is_cloned: false,
         },
       ],
     }));
@@ -772,6 +786,7 @@ function App() {
           <FormulaView
             canUseLiveData={canUseLiveData}
             formulasState={formulasState}
+            chemicalsState={chemicalsState}
             onSelectFormula={(id) => setSelectedFormulaId((current) => (current === id ? null : id))}
             selectedFormula={selectedFormula}
             isCreatingVersion={isCreatingVersion}
@@ -1186,6 +1201,7 @@ function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, run
 function FormulaView({
   canUseLiveData,
   formulasState,
+  chemicalsState,
   onSelectFormula,
   selectedFormula,
   isCreatingVersion,
@@ -1199,7 +1215,10 @@ function FormulaView({
   onSubmitNewVersion,
 }) {
   const formulas = formulasState.data || [];
+  const chemicals = chemicalsState.data || [];
   const formulaRefs = useRef({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeItemIndex, setActiveItemIndex] = useState(null);
 
   useEffect(() => {
     if (selectedFormula?.id && formulaRefs.current[selectedFormula.id]) {
@@ -1212,6 +1231,21 @@ function FormulaView({
       }, 100);
     }
   }, [selectedFormula?.id]);
+
+  const filteredChemicals = searchTerm
+    ? chemicals.filter(
+        (c) =>
+          c.chemical_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : chemicals.slice(0, 50);
+
+  function handleSelectChemical(index, chem) {
+    onUpdateVersionItem(index, "chemical_code", chem.chemical_code);
+    onUpdateVersionItem(index, "chemical_description", chem.description);
+    setActiveItemIndex(null);
+    setSearchTerm("");
+  }
 
   return (
     <section className="page-grid">
@@ -1312,22 +1346,55 @@ function FormulaView({
                             <tbody>
                               {newVersionData.items.map((item, idx) => (
                                 <tr key={idx}>
-                                  <td>
+                                  <td style={{ position: "relative" }}>
                                     <input
                                       required
+                                      readOnly={item._is_cloned}
                                       className="input-table"
                                       type="text"
                                       value={item.chemical_code}
-                                      onChange={(e) => onUpdateVersionItem(idx, "chemical_code", e.target.value)}
+                                      placeholder="Pesquisar..."
+                                      onFocus={() => !item._is_cloned && setActiveItemIndex(idx)}
+                                      onBlur={() => {
+                                        setTimeout(() => setActiveItemIndex(null), 200);
+                                      }}
+                                      onChange={(e) => {
+                                        if (!item._is_cloned) {
+                                          setSearchTerm(e.target.value);
+                                          onUpdateVersionItem(idx, "chemical_code", e.target.value);
+                                        }
+                                      }}
                                     />
+                                    {!item._is_cloned && activeItemIndex === idx && (
+                                      <div className="catalog-dropdown">
+                                        {filteredChemicals.length > 0 ? (
+                                          filteredChemicals.map((c) => (
+                                            <div
+                                              key={c.chemical_code}
+                                              className="catalog-option"
+                                              onClick={() => handleSelectChemical(idx, c)}
+                                            >
+                                              <strong>{c.chemical_code}</strong> - {c.description}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="catalog-no-results">Nenhum produto encontrado</div>
+                                        )}
+                                      </div>
+                                    )}
                                   </td>
                                   <td>
                                     <input
                                       required
+                                      readOnly={item._is_cloned}
                                       className="input-table"
                                       type="text"
                                       value={item.chemical_description}
-                                      onChange={(e) => onUpdateVersionItem(idx, "chemical_description", e.target.value)}
+                                      onChange={(e) => {
+                                        if (!item._is_cloned) {
+                                          onUpdateVersionItem(idx, "chemical_description", e.target.value);
+                                        }
+                                      }}
                                     />
                                   </td>
                                   <td>
