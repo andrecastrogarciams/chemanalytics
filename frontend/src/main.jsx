@@ -118,6 +118,12 @@ function App() {
   const [lotDetailState, setLotDetailState] = useState({ loading: false, error: "", data: null });
   const [formulasState, setFormulasState] = useState({ loading: false, error: "", data: [] });
   const [selectedFormulaId, setSelectedFormulaId] = useState(null);
+  const [isCreatingVersion, setIsCreatingVersion] = useState(false);
+  const [newVersionData, setNewVersionData] = useState({
+    start_date: "",
+    observation: "",
+    items: [],
+  });
   const [actionMessage, setActionMessage] = useState("");
   const [reviewForm, setReviewForm] = useState({
     itemId: "",
@@ -208,7 +214,7 @@ function App() {
     loadFormulas();
   }, [activeSection, canUseLiveData]);
 
-  async function loadRuns(selectFirst = true) {
+  async function loadRuns(selectFirst = true, expandFirstLot = false) {
     setRunsState((current) => ({ ...current, loading: true, error: "" }));
     try {
       const payload = await requestWithSession("/v1/reconciliation/runs");
@@ -216,7 +222,7 @@ function App() {
       setRunsState({ loading: false, error: "", data: runs });
 
       if (selectFirst && runs.length > 0) {
-        await loadRunDetail(runs[0].id, true);
+        await loadRunDetail(runs[0].id, expandFirstLot);
       } else if (runs.length === 0) {
         setRunDetailState({ loading: false, error: "", data: null });
         setLotDetailState({ loading: false, error: "", data: null });
@@ -241,6 +247,14 @@ function App() {
       }
     } catch (error) {
       setRunDetailState({ loading: false, error: error.message, data: null });
+    }
+  }
+
+  async function handleToggleLot(lotId) {
+    if (lotDetailState.data?.id === lotId) {
+      setLotDetailState({ loading: false, error: "", data: null });
+    } else {
+      await loadLotDetail(lotId);
     }
   }
 
@@ -584,6 +598,81 @@ function App() {
     : "Operador VIPOSA";
 
   const selectedFormula = formulasState.data.find((formula) => formula.id === selectedFormulaId) || null;
+
+  function handleStartNewVersion(formula) {
+    const baseItems = formula.current_version?.items || [];
+    setNewVersionData({
+      start_date: new Date().toISOString().split("T")[0],
+      observation: `Nova versao baseada na V${formula.current_version?.version_number || 0}`,
+      items: baseItems.map((item) => ({
+        chemical_code: item.chemical_code,
+        chemical_description: item.chemical_description,
+        percentual: item.percentual,
+        tolerance_pct: item.tolerance_pct,
+        is_incomplete: item.is_incomplete,
+        incomplete_reason: item.incomplete_reason,
+      })),
+    });
+    setIsCreatingVersion(true);
+  }
+
+  function handleCancelNewVersion() {
+    setIsCreatingVersion(false);
+    setNewVersionData({ start_date: "", observation: "", items: [] });
+  }
+
+  function handleNewVersionChange(event) {
+    const { name, value } = event.target;
+    setNewVersionData((current) => ({ ...current, [name]: value }));
+  }
+
+  function handleUpdateVersionItem(index, field, value) {
+    setNewVersionData((current) => {
+      const newItems = [...current.items];
+      newItems[index] = { ...newItems[index], [field]: value };
+      return { ...current, items: newItems };
+    });
+  }
+
+  function handleAddVersionItem() {
+    setNewVersionData((current) => ({
+      ...current,
+      items: [
+        ...current.items,
+        {
+          chemical_code: "",
+          chemical_description: "",
+          percentual: 0,
+          tolerance_pct: 0,
+          is_incomplete: false,
+          incomplete_reason: "",
+        },
+      ],
+    }));
+  }
+
+  function handleRemoveVersionItem(index) {
+    setNewVersionData((current) => {
+      const newItems = current.items.filter((_, i) => i !== index);
+      return { ...current, items: newItems };
+    });
+  }
+
+  async function handleSubmitNewVersion(event) {
+    event.preventDefault();
+    setFormulasState((current) => ({ ...current, loading: true, error: "" }));
+
+    try {
+      await requestWithSession(`/v1/formulas/${selectedFormulaId}/versions`, {
+        method: "POST",
+        body: JSON.stringify(newVersionData),
+      });
+      setIsCreatingVersion(false);
+      await loadFormulas();
+    } catch (error) {
+      setFormulasState((current) => ({ ...current, loading: false, error: error.message }));
+    }
+  }
   const liveLotRows = runDetailState.data?.lots?.map((lot) => ({
     id: lot.id,
     label: lot.nf1,
@@ -673,7 +762,7 @@ function App() {
           <HistoryView
             canUseLiveData={canUseLiveData}
             lotDetailState={lotDetailState}
-            onLoadLot={loadLotDetail}
+            onLoadLot={handleToggleLot}
             onLoadRun={loadRunDetail}
             runDetailState={runDetailState}
             runsState={runsState}
@@ -685,6 +774,15 @@ function App() {
             formulasState={formulasState}
             onSelectFormula={(id) => setSelectedFormulaId((current) => (current === id ? null : id))}
             selectedFormula={selectedFormula}
+            isCreatingVersion={isCreatingVersion}
+            newVersionData={newVersionData}
+            onStartNewVersion={handleStartNewVersion}
+            onCancelNewVersion={handleCancelNewVersion}
+            onNewVersionChange={handleNewVersionChange}
+            onUpdateVersionItem={handleUpdateVersionItem}
+            onAddVersionItem={handleAddVersionItem}
+            onRemoveVersionItem={handleRemoveVersionItem}
+            onSubmitNewVersion={handleSubmitNewVersion}
           />
         ) : null}
       </main>
@@ -813,11 +911,21 @@ function ReconciliationView({
   runsState,
 }) {
   const lots = runDetailState.data?.lots || [];
+  const lotRefs = useRef({});
+
+  useEffect(() => {
+    if (lotDetailState.data?.id && lotRefs.current[lotDetailState.data.id]) {
+      setTimeout(() => {
+        lotRefs.current[lotDetailState.data.id]?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+  }, [lotDetailState.data?.id]);
+
   const items = lotDetailState.data?.items || [];
   const reviewableItems = items.filter((item) => item.status_final !== "inconsistent");
-  const inconsistentItems = items.filter((item) => item.status_final === "inconsistent");
-  const divergentItems = items.filter((item) => item.status_final === "divergent");
-  const conformItems = items.filter((item) => item.status_final === "conform");
 
   return (
     <section className="page-grid">
@@ -826,9 +934,7 @@ function ReconciliationView({
           <h4>Filtros de conferencia</h4>
           <span>janela maxima de 90 dias</span>
         </div>
-
         {!canUseLiveData ? <p className="inline-message">Entre com um usuario reviewer/admin para executar conferencias reais.</p> : null}
-
         <form onSubmit={onSubmit}>
           <div className="filter-grid">
             <label>
@@ -851,224 +957,139 @@ function ReconciliationView({
               <span>Derivacao</span>
               <input name="codder" placeholder="Codigo da derivacao" type="text" value={form.codder} onChange={onChange} />
             </label>
-            <label>
-              <span>Produto quimico</span>
-              <input name="chemical_code" placeholder="Codigo do quimico" type="text" value={form.chemical_code} onChange={onChange} />
-            </label>
             <label className="toggle-field">
               <span>Somente divergencias</span>
               <input checked={form.only_divergences} name="only_divergences" type="checkbox" onChange={onChange} />
-            </label>
-            <label className="toggle-field">
-              <span>Somente inconsistencias</span>
-              <input checked={form.only_inconsistencies} name="only_inconsistencies" type="checkbox" onChange={onChange} />
             </label>
           </div>
           <div className="action-row">
             <button className="primary-button" disabled={!canUseLiveData} type="submit">Executar conferencia</button>
           </div>
         </form>
-
         {actionMessage ? <p className="inline-message">{actionMessage}</p> : null}
       </article>
 
       <article className="panel-card">
         <div className="panel-head">
-          <h4>Runs recentes</h4>
-          <span>{runsState.loading ? "carregando..." : `${runsState.data.length} encontrados`}</span>
-        </div>
-        {runsState.error ? <p className="form-error">{runsState.error}</p> : null}
-        <div className="history-list">
-          {runsState.data.map((run) => (
-            <button key={run.id} className="history-card history-button" type="button" onClick={() => onLoadRun(run.id, true)}>
-              <div>
-                <strong>Run #{run.id}</strong>
-                <p>{formatDateTime(run.executed_at)} | {run.executed_by_username || "Sistema"}</p>
-              </div>
-              <div className="history-meta">
-                <span className={`pill status-${normalizeStatus(run.status)}`}>{formatStatusLabel(run.status)}</span>
-                <small>{run.processed_lots} lotes</small>
-              </div>
-            </button>
-          ))}
-        </div>
-      </article>
-
-      <article className="panel-card">
-        <div className="panel-head">
-          <h4>{runDetailState.data ? `Detalhamento da Run #${runDetailState.data.id}` : "Detalhamento da conferencia"}</h4>
-          <span>{runDetailState.loading ? "carregando..." : "dados congelados"}</span>
+          <h4>{runDetailState.data ? `Resultados da Run #${runDetailState.data.id}` : "Resultados da conferencia"}</h4>
+          <span>{lots.length} lotes encontrados</span>
         </div>
         {runDetailState.error ? <p className="form-error">{runDetailState.error}</p> : null}
-        {lots.length === 0 ? (
-          <p className="inline-message">Nenhum lote carregado.</p>
-        ) : (
-          <div className="table-shell">
-            <table>
-              <thead>
-                <tr>
-                  <th>NF1</th>
-                  <th>Produto</th>
-                  <th>Data</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lots.map((lot) => (
-                  <tr key={lot.id}>
-                    <td>{lot.nf1}</td>
-                    <td>
+        
+        <div className="formula-listing">
+          {lots.map((lot) => (
+            <div 
+              key={lot.id} 
+              ref={(el) => { lotRefs.current[lot.id] = el; }}
+              className={lotDetailState.data?.id === lot.id ? "formula-row expanded" : "formula-row"}
+            >
+              <button 
+                className={lotDetailState.data?.id === lot.id ? "formula-item active formula-button" : "formula-item formula-button"} 
+                type="button" 
+                onClick={() => onLoadLot(lot.id)}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                  <div>
+                    <strong>{lot.nf1}</strong>
+                    <p style={{ margin: 0 }}>
                       <strong>{formatArticleLabels(lot)}</strong>
-                      <div className="muted-inline">{formatArticleDerivation(lot.codpro, lot.codder)}</div>
-                    </td>
-                    <td>{formatDateTime(lot.recurtimento_date)}</td>
-                    <td><span className={`pill status-${normalizeStatus(lot.status_final)}`}>{formatStatusLabel(lot.status_final)}</span></td>
-                    <td><button className="table-link" type="button" onClick={() => onLoadLot(lot.id)}>Ver itens</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </article>
+                      <span className="muted-inline">{formatArticleDerivation(lot.codpro, lot.codder)}</span>
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span className={`pill status-${normalizeStatus(lot.status_final)}`}>{formatStatusLabel(lot.status_final)}</span>
+                    <small style={{ display: "block", marginTop: "4px", color: "#64748b" }}>{lot.items_count} itens</small>
+                  </div>
+                </div>
+              </button>
 
-      <article className="panel-card review-band">
-        <div className="panel-head">
-          <h4>{lotDetailState.data ? `Itens do lote ${lotDetailState.data.nf1}` : "Itens do lote"}</h4>
-          <span>{lotDetailState.loading ? "carregando..." : "auditoria e revisao"}</span>
-        </div>
-        {lotDetailState.error ? <p className="form-error">{lotDetailState.error}</p> : null}
-        {items.length === 0 ? (
-          <p className="inline-message">Selecione um lote para ver previsto, realizado e trilha de revisao.</p>
-        ) : (
-          <>
-            <div className="lot-summary-grid">
-              <article className="summary-card">
-                <span className="summary-label">Conformes</span>
-                <strong>{conformItems.length}</strong>
-              </article>
-              <article className="summary-card">
-                <span className="summary-label">Divergentes</span>
-                <strong>{divergentItems.length}</strong>
-              </article>
-              <article className="summary-card is-danger">
-                <span className="summary-label">Inconsistentes</span>
-                <strong>{inconsistentItems.length}</strong>
-              </article>
+              {lotDetailState.data?.id === lot.id ? (
+                <div className="formula-expand">
+                  <div className="panel-head">
+                    <h5>Itens do Lote {lot.nf1}</h5>
+                  </div>
+                  
+                  {lotDetailState.loading ? <p className="inline-message">Carregando itens...</p> : null}
+                  
+                  <div className="table-shell">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Produto</th>
+                          <th>Previsto</th>
+                          <th>Realizado</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item) => (
+                          <tr key={item.id}>
+                            <td>{item.chemical_description}</td>
+                            <td>{formatNumber(item.predicted_qty)} kg</td>
+                            <td>{formatNumber(item.used_qty)} kg</td>
+                            <td><span className={`pill status-${normalizeStatus(item.status_final)}`}>{formatStatusLabel(item.status_final)}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="review-band" style={{ marginTop: "20px", padding: "20px", background: "#f8fafc", borderRadius: "16px" }}>
+                    <div className="panel-head">
+                      <h6>Revisao Manual</h6>
+                    </div>
+                    <form onSubmit={onReviewSubmit}>
+                      <div className="review-grid">
+                        <label>
+                          <span>Item</span>
+                          <select name="itemId" value={reviewForm.itemId} onChange={onReviewChange}>
+                            <option value="">Selecione</option>
+                            {reviewableItems.map((i) => (
+                              <option key={i.id} value={i.id}>{i.chemical_description}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          <span>Status</span>
+                          <select name="reviewed_status" value={reviewForm.reviewed_status} onChange={onReviewChange}>
+                            <option value="conform">Conforme</option>
+                            <option value="divergent">Divergente</option>
+                          </select>
+                        </label>
+                        <label className="full-span">
+                          <span>Justificativa</span>
+                          <textarea name="justification" rows="2" value={reviewForm.justification} onChange={onReviewChange} />
+                        </label>
+                      </div>
+                      <div className="action-row" style={{ marginTop: "10px" }}>
+                        <button className="secondary-button btn-small" type="submit">Salvar Revisao</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
             </div>
-
-            {inconsistentItems.length ? (
-              <div className="inconsistency-banner">
-                <strong>Atencao operacional</strong>
-                <span>
-                  Existem {inconsistentItems.length} itens inconsistentes neste lote. Os motivos aparecem abaixo para orientar o saneamento de formula, catalogo ou dados Oracle.
-                </span>
-              </div>
-            ) : null}
-
-            <div className="table-shell">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Produto quimico</th>
-                    <th>Previsto</th>
-                    <th>Realizado</th>
-                    <th>Desvio</th>
-                    <th>Status final</th>
-                    <th>Diagnostico</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id} className={item.status_final === "inconsistent" ? "row-inconsistent" : ""}>
-                      <td>
-                        <strong>{item.chemical_description}</strong>
-                        <div className="muted-inline">COD {item.chemical_code}</div>
-                      </td>
-                      <td>{formatNumber(item.predicted_qty)} kg</td>
-                      <td>{formatNumber(item.used_qty)} kg</td>
-                      <td>{formatPercent(item.deviation_pct)}</td>
-                      <td><span className={`pill status-${normalizeStatus(item.status_final)}`}>{formatStatusLabel(item.status_final)}</span></td>
-                      <td>
-                        {item.inconsistency_code ? (
-                          <div className="diagnostic-block">
-                            <strong>{humanizeInconsistencyCode(item.inconsistency_code)}</strong>
-                            <span>{item.inconsistency_message || "Sem detalhe adicional."}</span>
-                          </div>
-                        ) : (
-                          <span className="muted-inline">Dentro do fluxo esperado</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </article>
-
-      <article className="panel-card review-band">
-        <div className="panel-head">
-          <h4>Revisao manual</h4>
-          <span>justificativa obrigatoria</span>
+          ))}
         </div>
-        {!canUseLiveData ? <p className="inline-message">A revisao manual exige login com perfil reviewer ou admin.</p> : null}
-        {reviewableItems.length === 0 && items.length > 0 ? (
-          <p className="inline-message">
-            Nenhum item elegivel para override manual. Itens inconsistentes exigem correcao de formula, catalogo ou origem Oracle antes de revisao.
-          </p>
-        ) : null}
-        <form onSubmit={onReviewSubmit}>
-          <div className="review-grid">
-            <label>
-              <span>Item divergente</span>
-              <select disabled={!reviewableItems.length || !canUseLiveData} name="itemId" value={reviewForm.itemId} onChange={onReviewChange}>
-                <option value="">Selecione</option>
-                {reviewableItems.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.chemical_description} | {formatStatusLabel(item.status_final)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Novo status</span>
-              <select disabled={!canUseLiveData} name="reviewed_status" value={reviewForm.reviewed_status} onChange={onReviewChange}>
-                <option value="conform">Conforme</option>
-                <option value="divergent">Divergente</option>
-                <option value="inconsistent">Inconsistente</option>
-              </select>
-            </label>
-            <label className="full-span">
-              <span>Justificativa obrigatoria</span>
-              <textarea
-                disabled={!canUseLiveData}
-                name="justification"
-                placeholder="Descreva o motivo da alteracao manual..."
-                rows="4"
-                value={reviewForm.justification}
-                onChange={onReviewChange}
-              />
-            </label>
-          </div>
-          <div className="action-row">
-            <button className="secondary-button" disabled={!canUseLiveData || reviewForm.loading} type="submit">
-              {reviewForm.loading ? "Salvando..." : "Salvar justificativa"}
-            </button>
-          </div>
-        </form>
-        {reviewForm.error ? <p className="form-error">{reviewForm.error}</p> : null}
-        {reviewForm.success ? <p className="inline-message">{reviewForm.success}</p> : null}
       </article>
     </section>
   );
 }
 
 function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, runDetailState, runsState }) {
-  const runs = runsState.data || [];
   const selectedRunLots = runDetailState.data?.lots || [];
+  const lotRefs = useRef({});
+
+  useEffect(() => {
+    if (lotDetailState.data?.id && lotRefs.current[lotDetailState.data.id]) {
+      setTimeout(() => {
+        lotRefs.current[lotDetailState.data.id]?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+  }, [lotDetailState.data?.id]);
 
   return (
     <section className="page-grid">
@@ -1076,97 +1097,107 @@ function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, run
 
       <article className="panel-card">
         <div className="panel-head">
-          <h4>Runs historicos</h4>
-          <span>dados congelados</span>
+          <h4>{runDetailState.data ? `Lotes da Run #${runDetailState.data.id}` : "Lotes da ultima execucao"}</h4>
+          <span>{selectedRunLots.length} lotes detectados</span>
         </div>
         {runsState.error ? <p className="form-error">{runsState.error}</p> : null}
-        <div className="history-list">
-          {runs.map((run) => (
-            <button key={run.id} className="history-card history-button" type="button" onClick={() => onLoadRun(run.id, true)}>
-              <div>
-                <strong>Run #{run.id}</strong>
-                <p>{formatDateTime(run.executed_at)} | {run.executed_by_username || "Sistema"}</p>
-              </div>
-              <div className="history-meta">
-                <span className={`pill status-${normalizeStatus(run.status)}`}>{formatStatusLabel(run.status)}</span>
-                <small>{run.processed_items} itens</small>
-              </div>
-            </button>
+        
+        <div className="formula-listing">
+          {selectedRunLots.map((lot) => (
+            <div 
+              key={lot.id} 
+              ref={(el) => { lotRefs.current[lot.id] = el; }}
+              className={lotDetailState.data?.id === lot.id ? "formula-row expanded" : "formula-row"}
+            >
+              <button 
+                className={lotDetailState.data?.id === lot.id ? "formula-item active formula-button" : "formula-item formula-button"} 
+                type="button" 
+                onClick={() => onLoadLot(lot.id)}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                  <div>
+                    <strong>{lot.nf1}</strong>
+                    <p style={{ margin: 0 }}>
+                      <strong>{formatArticleLabels(lot)}</strong>
+                      <span className="muted-inline">{formatArticleDerivation(lot.codpro, lot.codder)}</span>
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span className={`pill status-${normalizeStatus(lot.status_final)}`}>{formatStatusLabel(lot.status_final)}</span>
+                    <small style={{ display: "block", marginTop: "4px", color: "#64748b" }}>{lot.items_count} itens</small>
+                  </div>
+                </div>
+              </button>
+
+              {lotDetailState.data?.id === lot.id ? (
+                <div className="formula-expand">
+                  <div className="panel-head">
+                    <h5>Auditoria de itens e reviews</h5>
+                  </div>
+                  
+                  {lotDetailState.loading ? <p className="inline-message">Carregando auditoria...</p> : null}
+                  {lotDetailState.error ? <p className="form-error">{lotDetailState.error}</p> : null}
+                  
+                  {lotDetailState.data?.items?.length ? (
+                    <div className="history-list">
+                      {lotDetailState.data.items.map((item) => (
+                        <div key={item.id} className="history-card" style={{ background: "white", borderRadius: "14px" }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                              <strong>{item.chemical_description}</strong>
+                              <span className={`pill status-${normalizeStatus(item.status_final)}`}>
+                                {item.reviews.length} reviews
+                              </span>
+                            </div>
+                            <p className="muted-inline" style={{ margin: "4px 0" }}>
+                              Calculado: {formatStatusLabel(item.status_calculated)} | Final: {formatStatusLabel(item.status_final)}
+                            </p>
+                            
+                            {item.reviews.length > 0 && (
+                              <div style={{ marginTop: "10px", padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                                {item.reviews.map((rev, rIdx) => (
+                                  <div key={rIdx} style={{ fontSize: "0.85rem", marginBottom: rIdx === item.reviews.length - 1 ? 0 : "8px" }}>
+                                    <strong>{rev.reviewed_by_username || "Revisor"}</strong>: {rev.justification}
+                                    <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{formatDateTime(rev.reviewed_at)}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !lotDetailState.loading ? (
+                    <p className="inline-message">Nenhum item encontrado neste lote.</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
-      </article>
-
-      <article className="panel-card">
-        <div className="panel-head">
-          <h4>{runDetailState.data ? `Lotes da Run #${runDetailState.data.id}` : "Lotes da execucao"}</h4>
-          <span>{selectedRunLots.length} lotes</span>
-        </div>
-        <div className="table-shell">
-          <table>
-            <thead>
-              <tr>
-                <th>NF1</th>
-                <th>Produto</th>
-                <th>Status</th>
-                <th>Itens</th>
-                <th>Acoes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedRunLots.map((lot) => (
-                <tr key={lot.id}>
-                  <td>{lot.nf1}</td>
-                  <td>
-                    <strong>{formatArticleLabels(lot)}</strong>
-                    <div className="muted-inline">{formatArticleDerivation(lot.codpro, lot.codder)}</div>
-                  </td>
-                  <td><span className={`pill status-${normalizeStatus(lot.status_final)}`}>{formatStatusLabel(lot.status_final)}</span></td>
-                  <td>{lot.items_count}</td>
-                  <td><button className="table-link" type="button" onClick={() => onLoadLot(lot.id)}>Abrir lote</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-      <article className="panel-card">
-        <div className="panel-head">
-          <h4>{lotDetailState.data ? `Auditoria do lote ${lotDetailState.data.nf1}` : "Auditoria do lote"}</h4>
-          <span>reviews por item</span>
-        </div>
-        {lotDetailState.data ? (
-          <div className="detail-hero formula-inline-hero">
-            <div>
-              <strong>{formatArticleLabels(lotDetailState.data)}</strong>
-              <p className="formula-meta-line">{formatArticleDerivation(lotDetailState.data.codpro, lotDetailState.data.codder)}</p>
-            </div>
-            <span className={`pill status-${normalizeStatus(lotDetailState.data.status_final)}`}>{formatStatusLabel(lotDetailState.data.status_final)}</span>
-          </div>
+        {!selectedRunLots.length && !runsState.loading ? (
+          <p className="inline-message">Nenhum lote encontrado no historico recente.</p>
         ) : null}
-        {lotDetailState.data?.items?.length ? (
-          <div className="history-list">
-            {lotDetailState.data.items.map((item) => (
-              <div key={item.id} className="history-card">
-                <div>
-                  <strong>{item.chemical_description}</strong>
-                  <p>Status calculado: {formatStatusLabel(item.status_calculated)} | Final: {formatStatusLabel(item.status_final)}</p>
-                </div>
-                <div className="review-count">
-                  <span className={`pill status-${normalizeStatus(item.status_final)}`}>{item.reviews.length} reviews</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="inline-message">Selecione um lote para inspecionar a trilha de reviews.</p>
-        )}
       </article>
     </section>
   );
 }
 
-function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedFormula }) {
+function FormulaView({
+  canUseLiveData,
+  formulasState,
+  onSelectFormula,
+  selectedFormula,
+  isCreatingVersion,
+  newVersionData,
+  onStartNewVersion,
+  onCancelNewVersion,
+  onNewVersionChange,
+  onUpdateVersionItem,
+  onAddVersionItem,
+  onRemoveVersionItem,
+  onSubmitNewVersion,
+}) {
   const formulas = formulasState.data || [];
   const formulaRefs = useRef({});
 
@@ -1224,39 +1255,172 @@ function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedF
                           : "Sem versao ativa carregada"}
                       </p>
                     </div>
-                    <span className="pill status-success">{formula.active ? "Producao ativa" : "Inativa"}</span>
+                    <div className="hero-actions">
+                      <span className="pill status-success">{formula.active ? "Producao ativa" : "Inativa"}</span>
+                      {!isCreatingVersion && (
+                        <button className="primary-button" type="button" onClick={() => onStartNewVersion(formula)}>
+                          Nova Versao
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="table-shell">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Codigo</th>
-                          <th>Descricao</th>
-                          <th>Percentual</th>
-                          <th>Tolerancia</th>
-                          <th>Tipo</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(formula.current_version?.items || []).map((row) => (
-                          <tr key={row.id}>
-                            <td>{row.chemical_code}</td>
-                            <td>{row.chemical_description}</td>
-                            <td>{row.percentual == null ? "Incompleto" : `${formatNumber(row.percentual)}%`}</td>
-                            <td>{formatNumber(row.tolerance_pct)}%</td>
-                            <td><span className="pill status-neutral">{row.is_incomplete ? "Pendente" : "Componente"}</span></td>
+                  {isCreatingVersion ? (
+                    <form className="version-create-form" onSubmit={onSubmitNewVersion}>
+                      <div className="form-grid">
+                        <div className="form-field">
+                          <span>Data de Inicio</span>
+                          <input
+                            required
+                            name="start_date"
+                            type="date"
+                            value={newVersionData.start_date}
+                            onChange={onNewVersionChange}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <span>Observacao da Versao</span>
+                          <input
+                            name="observation"
+                            placeholder="Ex: Ajuste de percentual para nova safra"
+                            type="text"
+                            value={newVersionData.observation}
+                            onChange={onNewVersionChange}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="items-editor">
+                        <div className="items-header">
+                          <h5>Itens da Formula</h5>
+                          <button className="secondary-button btn-small" type="button" onClick={onAddVersionItem}>
+                            + Adicionar Item
+                          </button>
+                        </div>
+                        <div className="table-shell">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Cod. Quimico</th>
+                                <th>Descricao</th>
+                                <th>%</th>
+                                <th>Tol. %</th>
+                                <th>Incompleto?</th>
+                                <th>Acoes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {newVersionData.items.map((item, idx) => (
+                                <tr key={idx}>
+                                  <td>
+                                    <input
+                                      required
+                                      className="input-table"
+                                      type="text"
+                                      value={item.chemical_code}
+                                      onChange={(e) => onUpdateVersionItem(idx, "chemical_code", e.target.value)}
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      required
+                                      className="input-table"
+                                      type="text"
+                                      value={item.chemical_description}
+                                      onChange={(e) => onUpdateVersionItem(idx, "chemical_description", e.target.value)}
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      required
+                                      className="input-table"
+                                      disabled={item.is_incomplete}
+                                      step="0.0001"
+                                      type="number"
+                                      value={item.percentual}
+                                      onChange={(e) => onUpdateVersionItem(idx, "percentual", e.target.value)}
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      required
+                                      className="input-table"
+                                      step="0.01"
+                                      type="number"
+                                      value={item.tolerance_pct}
+                                      onChange={(e) => onUpdateVersionItem(idx, "tolerance_pct", e.target.value)}
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="checkbox"
+                                      checked={item.is_incomplete}
+                                      onChange={(e) => onUpdateVersionItem(idx, "is_incomplete", e.target.checked)}
+                                    />
+                                  </td>
+                                  <td>
+                                    <button
+                                      className="btn-danger btn-small"
+                                      type="button"
+                                      onClick={() => onRemoveVersionItem(idx)}
+                                    >
+                                      Remover
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div className="form-actions">
+                        <button className="secondary-button" type="button" onClick={onCancelNewVersion}>
+                          Cancelar
+                        </button>
+                        <button className="primary-button" type="submit">
+                          Salvar Nova Versao
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="table-shell">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Codigo</th>
+                            <th>Descricao</th>
+                            <th>Percentual</th>
+                            <th>Tolerancia</th>
+                            <th>Tipo</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {(formula.current_version?.items || []).map((row) => (
+                            <tr key={row.id}>
+                              <td>{row.chemical_code}</td>
+                              <td>{row.chemical_description}</td>
+                              <td>{row.percentual == null ? "Incompleto" : `${formatNumber(row.percentual)}%`}</td>
+                              <td>{formatNumber(row.tolerance_pct)}%</td>
+                              <td>
+                                <span className="pill status-neutral">
+                                  {row.is_incomplete ? "Pendente" : "Componente"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
           ))}
         </div>
-        {!formulas.length ? <p className="inline-message">Nenhuma formula carregada ou acesso nao permitido para o perfil atual.</p> : null}
+        {!formulas.length ? (
+          <p className="inline-message">Nenhuma formula carregada ou acesso nao permitido para o perfil atual.</p>
+        ) : null}
       </article>
     </section>
   );
