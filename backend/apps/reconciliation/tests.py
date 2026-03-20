@@ -10,6 +10,7 @@ from django.utils.timezone import now
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from apps.catalog.models import ArticleCatalog
 from apps.catalog.models import ChemicalProductCatalog
 from apps.formulas.models import Formula, FormulaItem, FormulaVersion
 
@@ -43,6 +44,20 @@ class ReconciliationApiTests(APITestCase):
         )
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['data']['access']}")
 
+        ArticleCatalog.objects.create(
+            codpro="ART001",
+            codder="00001",
+            article_description="Artigo 1",
+            derivation_description="Derivacao 1",
+            source_last_seen_at=now(),
+        )
+        ArticleCatalog.objects.create(
+            codpro="ART404",
+            codder="00001",
+            article_description="Artigo 404",
+            derivation_description="Derivacao sem formula",
+            source_last_seen_at=now(),
+        )
         formula = Formula.objects.create(codpro="ART001", codder="00001")
         version = FormulaVersion.objects.create(formula=formula, version_number=1, start_date="2023-01-01")
         FormulaItem.objects.create(
@@ -209,6 +224,8 @@ class ReconciliationApiTests(APITestCase):
         self.assertEqual(response.data["data"]["id"], run.id)
         self.assertEqual(len(response.data["data"]["lots"]), 1)
         self.assertEqual(response.data["data"]["lots"][0]["id"], lot.id)
+        self.assertEqual(response.data["data"]["lots"][0]["article_description"], "Artigo 1")
+        self.assertEqual(response.data["data"]["lots"][0]["derivation_description"], "Derivacao 1")
         self.assertTrue(response.data["data"]["lots"][0]["has_divergence"])
 
     def test_lot_detail_returns_items_and_highlights_inconsistency(self):
@@ -249,6 +266,8 @@ class ReconciliationApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["data"]["id"], lot.id)
+        self.assertEqual(response.data["data"]["article_description"], "Artigo 404")
+        self.assertEqual(response.data["data"]["derivation_description"], "Derivacao sem formula")
         self.assertTrue(response.data["data"]["has_inconsistency"])
         self.assertEqual(len(response.data["data"]["items"]), 1)
         self.assertEqual(response.data["data"]["items"][0]["id"], item.id)

@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db.models import Prefetch
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -66,7 +67,12 @@ class ReconciliationRunDetailView(APIView):
 
     def get(self, request, run_id):
         run = get_object_or_404(
-            ReconciliationRun.objects.select_related("executed_by").prefetch_related("lots__formula_version"),
+            ReconciliationRun.objects.select_related("executed_by").prefetch_related(
+                Prefetch(
+                    "lots",
+                    queryset=ReconciliationLotResult.objects.select_related("formula_version__formula__article"),
+                )
+            ),
             id=run_id,
         )
         return Response({"success": True, "data": ReconciliationRunDetailSerializer(run).data})
@@ -77,7 +83,7 @@ class ReconciliationLotDetailView(APIView):
 
     def get(self, request, lot_id):
         lot = get_object_or_404(
-            ReconciliationLotResult.objects.select_related("formula_version").prefetch_related(
+            ReconciliationLotResult.objects.select_related("formula_version__formula__article").prefetch_related(
                 "items__formula_version",
                 "items__reviews__reviewed_by",
             ),

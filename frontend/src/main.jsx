@@ -587,7 +587,7 @@ function App() {
   const liveLotRows = runDetailState.data?.lots?.map((lot) => ({
     id: lot.id,
     label: lot.nf1,
-    formula: formatArticleDerivation(lot.codpro, lot.codder),
+    formula: formatArticleLabels(lot),
     date: formatDateTime(lot.recurtimento_date),
     operator: runDetailState.data.executed_by_username || "Sistema",
     status: lot.status_final,
@@ -918,7 +918,10 @@ function ReconciliationView({
                 {lots.map((lot) => (
                   <tr key={lot.id}>
                     <td>{lot.nf1}</td>
-                    <td>{formatArticleDerivation(lot.codpro, lot.codder)}</td>
+                    <td>
+                      <strong>{formatArticleLabels(lot)}</strong>
+                      <div className="muted-inline">{formatArticleDerivation(lot.codpro, lot.codder)}</div>
+                    </td>
                     <td>{formatDateTime(lot.recurtimento_date)}</td>
                     <td><span className={`pill status-${normalizeStatus(lot.status_final)}`}>{formatStatusLabel(lot.status_final)}</span></td>
                     <td><button className="table-link" type="button" onClick={() => onLoadLot(lot.id)}>Ver itens</button></td>
@@ -1113,7 +1116,10 @@ function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, run
               {selectedRunLots.map((lot) => (
                 <tr key={lot.id}>
                   <td>{lot.nf1}</td>
-                  <td>{formatArticleDerivation(lot.codpro, lot.codder)}</td>
+                  <td>
+                    <strong>{formatArticleLabels(lot)}</strong>
+                    <div className="muted-inline">{formatArticleDerivation(lot.codpro, lot.codder)}</div>
+                  </td>
                   <td><span className={`pill status-${normalizeStatus(lot.status_final)}`}>{formatStatusLabel(lot.status_final)}</span></td>
                   <td>{lot.items_count}</td>
                   <td><button className="table-link" type="button" onClick={() => onLoadLot(lot.id)}>Abrir lote</button></td>
@@ -1129,6 +1135,15 @@ function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, run
           <h4>{lotDetailState.data ? `Auditoria do lote ${lotDetailState.data.nf1}` : "Auditoria do lote"}</h4>
           <span>reviews por item</span>
         </div>
+        {lotDetailState.data ? (
+          <div className="detail-hero formula-inline-hero">
+            <div>
+              <strong>{formatArticleLabels(lotDetailState.data)}</strong>
+              <p className="formula-meta-line">{formatArticleDerivation(lotDetailState.data.codpro, lotDetailState.data.codder)}</p>
+            </div>
+            <span className={`pill status-${normalizeStatus(lotDetailState.data.status_final)}`}>{formatStatusLabel(lotDetailState.data.status_final)}</span>
+          </div>
+        ) : null}
         {lotDetailState.data?.items?.length ? (
           <div className="history-list">
             {lotDetailState.data.items.map((item) => (
