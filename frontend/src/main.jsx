@@ -1220,7 +1220,7 @@ function FormulaView({ canUseLiveData, formulasState, onSelectFormula, selectedF
                       <p className="formula-meta-line">{formatArticleDerivation(formula.codpro, formula.codder)}</p>
                       <p>
                         {formula.current_version
-                          ? `Versao ${formula.current_version.version_number} vigente desde ${formatDateTime(formula.current_version.start_date)}`
+                          ? `Versao ${formula.current_version.version_number} vigente desde ${formatDateOnly(formula.current_version.start_date)}`
                           : "Sem versao ativa carregada"}
                       </p>
                     </div>
@@ -1296,6 +1296,19 @@ function formatDateTime(value) {
   }
 
   return parsed.toLocaleString("pt-BR");
+}
+
+function formatDateOnly(value) {
+  if (!value) {
+    return "-";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+
+  return parsed.toLocaleDateString("pt-BR");
 }
 
 function formatNumber(value) {
