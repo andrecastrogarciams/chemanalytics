@@ -8,8 +8,11 @@ from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils.timezone import now
 from rest_framework import status
 from rest_framework.test import APITestCase
+
+from apps.catalog.models import ArticleCatalog
 
 from .models import Formula, FormulaItem, FormulaVersion
 
@@ -126,6 +129,13 @@ class FormulaApiTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['data']['access']}")
 
     def test_create_formula_with_initial_version(self):
+        ArticleCatalog.objects.create(
+            codpro="ART100",
+            codder="D1",
+            article_description="Artigo 100",
+            derivation_description="Derivacao 1",
+            source_last_seen_at=now(),
+        )
         response = self.client.post(
             reverse("formula-list-create"),
             {
@@ -148,6 +158,31 @@ class FormulaApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["data"]["current_version"]["version_number"], 1)
+        self.assertEqual(response.data["data"]["article_description"], "Artigo 100")
+        self.assertEqual(response.data["data"]["derivation_description"], "Derivacao 1")
+
+    def test_create_formula_requires_article_from_catalog(self):
+        response = self.client.post(
+            reverse("formula-list-create"),
+            {
+                "codpro": "ART404",
+                "codder": "D9",
+                "observation": "Missing article",
+                "start_date": "2026-01-01",
+                "version_observation": "v1",
+                "items": [
+                    {
+                        "chemical_code": "Q001",
+                        "chemical_description": "Acido",
+                        "percentual": "4.7000",
+                        "tolerance_pct": "2.00",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_new_version_closes_previous_one(self):
         formula = Formula.objects.create(codpro="ART100", codder="D1")

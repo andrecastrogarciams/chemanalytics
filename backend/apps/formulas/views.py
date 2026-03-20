@@ -19,7 +19,7 @@ class FormulaListCreateView(APIView):
     permission_classes = [IsAdminRole]
 
     def get(self, request):
-        formulas = Formula.objects.prefetch_related("versions__items").all().order_by("codpro", "codder")
+        formulas = Formula.objects.select_related("article").prefetch_related("versions__items").all().order_by("codpro", "codder")
         return Response({"success": True, "data": FormulaSerializer(formulas, many=True).data})
 
     def post(self, request):
@@ -36,7 +36,7 @@ class FormulaDetailView(APIView):
     permission_classes = [IsAdminRole]
 
     def get(self, request, formula_id):
-        formula = get_object_or_404(Formula.objects.prefetch_related("versions__items"), pk=formula_id)
+        formula = get_object_or_404(Formula.objects.select_related("article").prefetch_related("versions__items"), pk=formula_id)
         return Response({"success": True, "data": FormulaSerializer(formula).data})
 
 

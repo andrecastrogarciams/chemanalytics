@@ -4,6 +4,8 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
+from apps.catalog.models import ArticleCatalog
+
 
 class ActiveModel(models.Model):
     active = models.BooleanField(default=True)
@@ -15,6 +17,7 @@ class ActiveModel(models.Model):
 
 
 class Formula(ActiveModel):
+    article = models.ForeignKey(ArticleCatalog, blank=True, null=True, on_delete=models.SET_NULL, related_name="formulas")
     codpro = models.CharField(max_length=14)
     codder = models.CharField(max_length=7)
     observation = models.TextField(blank=True, null=True)
@@ -27,6 +30,11 @@ class Formula(ActiveModel):
 
     def __str__(self):
         return f"{self.codpro}/{self.codder}"
+
+    def save(self, *args, **kwargs):
+        if not self.article_id:
+            self.article = ArticleCatalog.objects.filter(codpro=self.codpro, codder=self.codder, active=True).first()
+        super().save(*args, **kwargs)
 
 
 class FormulaVersion(ActiveModel):

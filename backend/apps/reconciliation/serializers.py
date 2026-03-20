@@ -1,6 +1,22 @@
 from rest_framework import serializers
 
+from apps.catalog.models import ArticleCatalog
+
 from .models import ReconciliationItemResult, ReconciliationItemReview, ReconciliationLotResult, ReconciliationRun
+
+
+def resolve_article_catalog(lot_result):
+    formula_version = getattr(lot_result, "formula_version", None)
+    formula = getattr(formula_version, "formula", None)
+    article = getattr(formula, "article", None)
+    if article and article.active:
+        return article
+
+    return ArticleCatalog.objects.filter(
+        codpro=lot_result.codpro,
+        codder=lot_result.codder,
+        active=True,
+    ).first()
 
 
 class ReconciliationRunRequestSerializer(serializers.Serializer):
@@ -61,6 +77,8 @@ class ReconciliationRunListSerializer(serializers.ModelSerializer):
 
 class ReconciliationLotSummarySerializer(serializers.ModelSerializer):
     formula_version_number = serializers.IntegerField(source="formula_version.version_number", read_only=True)
+    article_description = serializers.SerializerMethodField()
+    derivation_description = serializers.SerializerMethodField()
 
     class Meta:
         model = ReconciliationLotResult
@@ -70,6 +88,8 @@ class ReconciliationLotSummarySerializer(serializers.ModelSerializer):
             "recurtimento_date",
             "codpro",
             "codder",
+            "article_description",
+            "derivation_description",
             "lot_weight",
             "formula_version_number",
             "status_final",
@@ -77,6 +97,14 @@ class ReconciliationLotSummarySerializer(serializers.ModelSerializer):
             "has_divergence",
             "items_count",
         )
+
+    def get_article_description(self, obj):
+        article = resolve_article_catalog(obj)
+        return article.article_description if article else None
+
+    def get_derivation_description(self, obj):
+        article = resolve_article_catalog(obj)
+        return article.derivation_description if article else None
 
 
 class ReconciliationRunDetailSerializer(serializers.ModelSerializer):
@@ -165,6 +193,8 @@ class ReconciliationItemDetailSerializer(serializers.ModelSerializer):
 
 class ReconciliationLotDetailSerializer(serializers.ModelSerializer):
     formula_version_number = serializers.IntegerField(source="formula_version.version_number", read_only=True)
+    article_description = serializers.SerializerMethodField()
+    derivation_description = serializers.SerializerMethodField()
     items = ReconciliationItemDetailSerializer(many=True, read_only=True)
 
     class Meta:
@@ -175,6 +205,8 @@ class ReconciliationLotDetailSerializer(serializers.ModelSerializer):
             "recurtimento_date",
             "codpro",
             "codder",
+            "article_description",
+            "derivation_description",
             "lot_weight",
             "formula_version_number",
             "status_final",
@@ -183,6 +215,14 @@ class ReconciliationLotDetailSerializer(serializers.ModelSerializer):
             "items_count",
             "items",
         )
+
+    def get_article_description(self, obj):
+        article = resolve_article_catalog(obj)
+        return article.article_description if article else None
+
+    def get_derivation_description(self, obj):
+        article = resolve_article_catalog(obj)
+        return article.derivation_description if article else None
 
 
 class ReconciliationItemWithReviewsSerializer(serializers.ModelSerializer):

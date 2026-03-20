@@ -31,6 +31,9 @@ Copie `.env.example` para `.env` e ajuste no mínimo:
 - `VITE_API_BASE_URL`
 - `ORACLE_USER`
 - `ORACLE_PASSWORD`
+- `ORACLE_HOST`
+- `ORACLE_PORT`
+- `ORACLE_SERVICE_NAME`
 - `ORACLE_DSN`
 - `MYSQL_DATABASE`
 - `MYSQL_USER`
@@ -42,6 +45,7 @@ Observações:
 
 - O backend atual usa SQLite em `backend/config/settings.py`.
 - As variáveis MySQL e Oracle já existem para preparação operacional, health check e futuras integrações.
+- Oracle pode ser configurado por `ORACLE_DSN` ou por `ORACLE_HOST` + `ORACLE_PORT` + `ORACLE_SERVICE_NAME`.
 - Para testes offline, os adapters aceitam fixtures locais por variável:
   - `ORACLE_FIXTURE_PATH`
   - `ORACLE_RECONCILIATION_FIXTURE_PATH`
@@ -67,6 +71,11 @@ npm install
 npm run build
 npm run dev
 ```
+
+Observacao:
+
+- o repositório versiona `frontend/.env.production` com `VITE_API_BASE_URL=/api`
+- no deploy publicado via Nginx, o frontend deve falar com a API usando caminho relativo `/api`, nunca `localhost`
 
 ## Criacao do banco MySQL
 
@@ -178,3 +187,22 @@ Procedimento conservador para o estado atual:
 5. Suba a aplicação novamente e valide health.
 
 Como ainda não existe pipeline formal de release, o rollback atual depende de backup de código e banco antes da mudança.
+
+## Deploy Ubuntu isolado
+
+Para servidores Ubuntu com outras aplicacoes ja em execucao, use os templates em `deploy/ubuntu/`:
+
+- `deploy/ubuntu/chemanalytics.service`
+- `deploy/ubuntu/nginx.chemanalytics.conf`
+- `deploy/ubuntu/chemanalytics.env.example`
+- `deploy/ubuntu/README.md`
+
+Esse pacote assume isolamento por:
+
+- usuario dedicado
+- diretorio dedicado
+- virtualenv dedicado
+- bind interno em `127.0.0.1:8010`
+- server block proprio no Nginx
+
+Assim o deploy evita conflito direto com as demais aplicacoes do servidor.

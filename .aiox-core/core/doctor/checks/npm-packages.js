@@ -15,13 +15,15 @@ const fs = require('fs');
 const name = 'npm-packages';
 
 async function run(context) {
+  const rootPackageJson = path.join(context.projectRoot, 'package.json');
   const nodeModulesPath = path.join(context.projectRoot, 'node_modules');
-  // Check 1: Project node_modules
-  if (!fs.existsSync(nodeModulesPath)) {
+
+  // Check 1: Project node_modules (only if package.json exists at root)
+  if (fs.existsSync(rootPackageJson) && !fs.existsSync(nodeModulesPath)) {
     return {
       check: name,
       status: 'FAIL',
-      message: 'node_modules not found',
+      message: 'Root package.json found, but node_modules missing',
       fixCommand: 'npm install',
     };
   }

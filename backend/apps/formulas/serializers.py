@@ -1,6 +1,8 @@
 from django.db import transaction
 from rest_framework import serializers
 
+from apps.catalog.models import ArticleCatalog
+
 from .models import Formula, FormulaItem, FormulaVersion
 
 
@@ -48,10 +50,22 @@ class FormulaVersionSerializer(serializers.ModelSerializer):
 class FormulaSerializer(serializers.ModelSerializer):
     versions = FormulaVersionSerializer(many=True, read_only=True)
     current_version = serializers.SerializerMethodField()
+    article_description = serializers.CharField(source="article.article_description", read_only=True)
+    derivation_description = serializers.CharField(source="article.derivation_description", read_only=True)
 
     class Meta:
         model = Formula
-        fields = ("id", "codpro", "codder", "observation", "active", "current_version", "versions")
+        fields = (
+            "id",
+            "codpro",
+            "codder",
+            "article_description",
+            "derivation_description",
+            "observation",
+            "active",
+            "current_version",
+            "versions",
+        )
 
     def get_current_version(self, obj):
         version = obj.versions.filter(active=True).order_by("-start_date", "-version_number").first()
@@ -71,6 +85,13 @@ class FormulaCreateSerializer(serializers.Serializer):
         if len(codes) != len(set(codes)):
             raise serializers.ValidationError("Duplicate chemical_code is not allowed in the same version.")
         return items
+
+    def validate(self, attrs):
+        article = ArticleCatalog.objects.filter(codpro=attrs["codpro"], codder=attrs["codder"], active=True).first()
+        if not article:
+            raise serializers.ValidationError("Article/derivation pair not found in synchronized Oracle catalog.")
+        attrs["article"] = article
+        return attrs
 
     @transaction.atomic
     def create(self, validated_data):
