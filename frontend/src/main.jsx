@@ -651,7 +651,6 @@ function App() {
     setNewVersionData((current) => ({
       ...current,
       items: [
-        ...current.items,
         {
           chemical_code: "",
           chemical_description: "",
@@ -661,6 +660,7 @@ function App() {
           incomplete_reason: "",
           _is_cloned: false,
         },
+        ...current.items,
       ],
     }));
   }
@@ -1198,6 +1198,59 @@ function HistoryView({ canUseLiveData, lotDetailState, onLoadLot, onLoadRun, run
   );
 }
 
+function ChemicalSearchModal({ chemicals, onClose, onSelect }) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filtered = searchTerm
+    ? chemicals.filter(
+        (c) =>
+          c.chemical_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : chemicals.slice(0, 50);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h4>Pesquisar Produto Quimico</h4>
+          <button className="ghost-button" type="button" onClick={onClose}>
+            Fechar
+          </button>
+        </div>
+        <div className="modal-body">
+          <p>Digite o codigo ou a descricao do produto para localizar no catalogo sincronizado.</p>
+          <input
+            autoFocus
+            placeholder="Ex: 10.01.001 ou Pigmento..."
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+
+          <div className="catalog-search-results">
+            {filtered.map((c) => (
+              <div key={c.chemical_code} className="catalog-search-item" onClick={() => onSelect(c)}>
+                <div>
+                  <strong>{c.chemical_code}</strong>
+                  <div style={{ fontSize: "0.9rem", color: "#64748b" }}>{c.description}</div>
+                </div>
+                <span className="pill status-success">Selecionar</span>
+              </div>
+            ))}
+            {filtered.length === 0 && <p className="inline-message">Nenhum produto encontrado para este termo.</p>}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="secondary-button" type="button" onClick={onClose}>
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FormulaView({
   canUseLiveData,
   formulasState,
@@ -1217,7 +1270,6 @@ function FormulaView({
   const formulas = formulasState.data || [];
   const chemicals = chemicalsState.data || [];
   const formulaRefs = useRef({});
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeItemIndex, setActiveItemIndex] = useState(null);
 
   useEffect(() => {
@@ -1232,23 +1284,23 @@ function FormulaView({
     }
   }, [selectedFormula?.id]);
 
-  const filteredChemicals = searchTerm
-    ? chemicals.filter(
-        (c) =>
-          c.chemical_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          c.description.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : chemicals.slice(0, 50);
-
-  function handleSelectChemical(index, chem) {
-    onUpdateVersionItem(index, "chemical_code", chem.chemical_code);
-    onUpdateVersionItem(index, "chemical_description", chem.description);
-    setActiveItemIndex(null);
-    setSearchTerm("");
+  function handleSelectChemical(chem) {
+    if (activeItemIndex !== null) {
+      onUpdateVersionItem(activeItemIndex, "chemical_code", chem.chemical_code);
+      onUpdateVersionItem(activeItemIndex, "chemical_description", chem.description);
+      setActiveItemIndex(null);
+    }
   }
 
   return (
     <section className="page-grid">
+      {activeItemIndex !== null && (
+        <ChemicalSearchModal
+          chemicals={chemicals}
+          onClose={() => setActiveItemIndex(null)}
+          onSelect={handleSelectChemical}
+        />
+      )}
       <article className="panel-card formula-list formula-list--single-column">
         <div className="panel-head">
           <h4>Formulas existentes</h4>
@@ -1346,55 +1398,25 @@ function FormulaView({
                             <tbody>
                               {newVersionData.items.map((item, idx) => (
                                 <tr key={idx}>
-                                  <td style={{ position: "relative" }}>
+                                  <td>
                                     <input
                                       required
-                                      readOnly={item._is_cloned}
+                                      readOnly
                                       className="input-table"
                                       type="text"
                                       value={item.chemical_code}
                                       placeholder="Pesquisar..."
-                                      onFocus={() => !item._is_cloned && setActiveItemIndex(idx)}
-                                      onBlur={() => {
-                                        setTimeout(() => setActiveItemIndex(null), 200);
-                                      }}
-                                      onChange={(e) => {
-                                        if (!item._is_cloned) {
-                                          setSearchTerm(e.target.value);
-                                          onUpdateVersionItem(idx, "chemical_code", e.target.value);
-                                        }
-                                      }}
+                                      onClick={() => !item._is_cloned && setActiveItemIndex(idx)}
                                     />
-                                    {!item._is_cloned && activeItemIndex === idx && (
-                                      <div className="catalog-dropdown">
-                                        {filteredChemicals.length > 0 ? (
-                                          filteredChemicals.map((c) => (
-                                            <div
-                                              key={c.chemical_code}
-                                              className="catalog-option"
-                                              onClick={() => handleSelectChemical(idx, c)}
-                                            >
-                                              <strong>{c.chemical_code}</strong> - {c.description}
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="catalog-no-results">Nenhum produto encontrado</div>
-                                        )}
-                                      </div>
-                                    )}
                                   </td>
                                   <td>
                                     <input
                                       required
-                                      readOnly={item._is_cloned}
+                                      readOnly
                                       className="input-table"
                                       type="text"
                                       value={item.chemical_description}
-                                      onChange={(e) => {
-                                        if (!item._is_cloned) {
-                                          onUpdateVersionItem(idx, "chemical_description", e.target.value);
-                                        }
-                                      }}
+                                      onClick={() => !item._is_cloned && setActiveItemIndex(idx)}
                                     />
                                   </td>
                                   <td>
